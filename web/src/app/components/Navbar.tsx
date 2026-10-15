@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 const NAV_LINKS = [
-  { label: "How it works", href: "#how-it-works" },
+  { label: "How it works", href: "https://youtu.be/thXUz7isjfc?si=PksxUcOnV9_cPiYf", external: true },
   { label: "For Trips", href: "#for-trips" },
   { label: "Features", href: "#features" },
   { label: "Pricing", href: "#pricing" },
@@ -35,8 +36,8 @@ export default function Navbar() {
       <div className="mx-auto w-full max-w-[1400px] px-6 md:px-10 lg:px-12">
         <div className="flex h-16 items-center justify-between lg:h-20">
           {/* Logo */}
-          <a
-            href="#"
+          <Link
+            href="/"
             id="logo"
             className="flex items-center gap-2 select-none"
           >
@@ -46,7 +47,7 @@ export default function Navbar() {
             <span className="text-lg font-bold tracking-[0.2em] uppercase text-[#d4a853]">
               Matters
             </span>
-          </a>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-8">
@@ -54,6 +55,8 @@ export default function Navbar() {
               <a
                 key={link.href}
                 href={link.href}
+                target={link.external ? "_blank" : undefined}
+                rel={link.external ? "noopener noreferrer" : undefined}
                 id={`nav-${link.href.replace("#", "")}`}
                 className="text-sm font-medium text-white/60 hover:text-white transition-colors duration-300"
               >
@@ -65,14 +68,14 @@ export default function Navbar() {
           {/* Auth Buttons */}
           <div className="hidden lg:flex items-center gap-4">
             <a
-              href="#login"
+              href="/auth?mode=login"
               id="nav-login"
               className="px-4 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors duration-300"
             >
               Login
             </a>
             <a
-              href="#login"
+              href="/auth?mode=signup"
               id="nav-signup"
               className="px-6 py-2.5 text-sm font-semibold text-black bg-[#d4a853] hover:bg-[#c49a48] rounded-full transition-all duration-300 hover:shadow-[0_0_25px_rgba(212,168,83,0.35)] hover:scale-[1.02]"
             >
@@ -117,6 +120,8 @@ export default function Navbar() {
             <a
               key={link.href}
               href={link.href}
+              target={link.external ? "_blank" : undefined}
+              rel={link.external ? "noopener noreferrer" : undefined}
               onClick={() => setMobileOpen(false)}
               className="px-4 py-3 text-sm font-medium text-white/60 hover:text-white transition-colors duration-300 rounded-lg hover:bg-white/[0.04]"
             >
@@ -125,13 +130,13 @@ export default function Navbar() {
           ))}
           <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-white/[0.06]">
             <a
-              href="#login"
+              href="/auth?mode=login"
               className="px-4 py-2.5 text-sm font-medium text-white/70 hover:text-white text-center transition-colors"
             >
               Login
             </a>
             <a
-              href="#login"
+              href="/auth?mode=signup"
               className="px-4 py-2.5 text-sm font-semibold text-black bg-[#d4a853] hover:bg-[#c49a48] rounded-full text-center transition-all"
             >
               Sign up

@@ -41,6 +41,7 @@ yarn-error.log*
 # ── .NET / C# (api/) ──────────────────────────────────────
 **/bin/
 **/obj/
+**/.keys/
 **/.vs/
 *.user
 *.suo

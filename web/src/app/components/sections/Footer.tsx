@@ -11,7 +11,7 @@ export default function Footer() {
             </h2>
           </div>
           <div className="lg:justify-self-end">
-            <a href="#login" className="inline-flex items-center gap-2 rounded-full border border-[#d4a853]/40 bg-[#d4a853] px-6 py-3 text-sm font-semibold text-black transition-all duration-300 hover:scale-[1.02] hover:bg-[#c49a48]">
+            <a href="/auth?mode=signup" className="inline-flex items-center gap-2 rounded-full border border-[#d4a853]/40 bg-[#d4a853] px-6 py-3 text-sm font-semibold text-black transition-all duration-300 hover:scale-[1.02] hover:bg-[#c49a48]">
               Start a trip <span aria-hidden="true">→</span>
             </a>
           </div>
@@ -31,7 +31,7 @@ export default function Footer() {
             <p className="mb-4 text-[10px] font-semibold tracking-[0.22em] text-white/35">EXPLORE</p>
             <div className="flex flex-col gap-3">
               {["How it works", "For Trips", "Features", "Pricing"].map((link) => (
-                <a key={link} href={`#${link.toLowerCase().replaceAll(" ", "-")}`} className="text-sm text-white/60 transition-colors hover:text-[#d4a853]">
+                <a key={link} href={link === "How it works" ? "https://youtu.be/thXUz7isjfc?si=PksxUcOnV9_cPiYf" : `#${link.toLowerCase().replaceAll(" ", "-")}`} target={link === "How it works" ? "_blank" : undefined} rel={link === "How it works" ? "noopener noreferrer" : undefined} className="text-sm text-white/60 transition-colors hover:text-[#d4a853]">
                   {link}
                 </a>
               ))}
@@ -41,8 +41,8 @@ export default function Footer() {
           <div>
             <p className="mb-4 text-[10px] font-semibold tracking-[0.22em] text-white/35">ACCOUNT</p>
             <div className="flex flex-col gap-3">
-              <a href="#login" className="text-sm text-white/60 transition-colors hover:text-[#d4a853]">Create account</a>
-              <a href="#login" className="text-sm text-white/60 transition-colors hover:text-[#d4a853]">Log in</a>
+              <a href="/auth?mode=signup" className="text-sm text-white/60 transition-colors hover:text-[#d4a853]">Create account</a>
+              <a href="/auth?mode=login" className="text-sm text-white/60 transition-colors hover:text-[#d4a853]">Log in</a>
               <a href="#support" className="text-sm text-white/60 transition-colors hover:text-[#d4a853]">Support</a>
             </div>
           </div>

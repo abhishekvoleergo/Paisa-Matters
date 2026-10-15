@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+.auth-scene {
+  background:
+    radial-gradient(ellipse 54% 45% at 82% 42%, rgba(123, 71, 35, .16), transparent 72%),
+    radial-gradient(ellipse 55% 50% at 14% 88%, rgba(212, 168, 83, .08), transparent 72%),
+    #050505;
+}
+.auth-card-perspective { perspective: 1500px; }
+.auth-card {
+  display: grid;
+  transform-style: preserve-3d;
+  transition: transform 760ms cubic-bezier(.2,.72,.2,1);
+}
+.auth-card.is-flipped { transform: rotateY(180deg); }
+.auth-face { grid-area: 1 / 1; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.auth-face-back { transform: rotateY(180deg); }
+@media (prefers-reduced-motion: reduce) {
+  .auth-card { transition-duration: 1ms; }
+}
+
 /* :root {
   --background: #050505;
   --foreground: #ededed;

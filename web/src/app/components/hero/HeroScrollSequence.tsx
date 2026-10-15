@@ -459,7 +459,7 @@ export default function HeroScrollSequence() {
                 className="mt-2 flex w-full flex-col items-stretch gap-3 pointer-events-auto sm:w-auto sm:flex-row sm:items-center sm:gap-4"
               >
                 <a
-                  href="#login"
+                  href="/auth?mode=signup"
                   id="hero-cta-primary"
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d4a853] px-7 py-3.5 text-sm font-semibold text-black transition-all duration-300 hover:scale-[1.02] hover:bg-[#c49a48] hover:shadow-[0_0_30px_rgba(212,168,83,0.35)]"
                 >
@@ -467,7 +467,9 @@ export default function HeroScrollSequence() {
                   <span aria-hidden="true">→</span>
                 </a>
                 <a
-                  href="#how-it-works"
+                  href="https://youtu.be/thXUz7isjfc?si=PksxUcOnV9_cPiYf"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   id="hero-cta-secondary"
                   className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-black/30 px-7 py-3.5 text-sm font-medium text-white/85 backdrop-blur-sm transition-all duration-300 hover:border-white/40 hover:bg-white/[0.08] hover:text-white"
                 >
