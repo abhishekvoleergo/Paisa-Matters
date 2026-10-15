@@ -107,7 +107,7 @@ export default function Pricing() {
     <section
       ref={sectionRef}
       id="pricing"
-      className="relative bg-[#050505] min-h-screen flex flex-col justify-center py-24 sm:py-32 overflow-hidden z-20"
+      className="relative bg-[#0b1212] min-h-screen flex flex-col justify-center py-24 sm:py-32 overflow-hidden z-20"
     >
       <div className="section-gold-glow absolute inset-0 pointer-events-none" />
 
@@ -116,7 +116,7 @@ export default function Pricing() {
         className="mx-auto w-full max-w-[1400px] px-6 md:px-10 lg:px-12 relative z-10 transform-gpu"
       >
         <div className="text-center mb-16 md:mb-20">
-          <p className="text-xs font-semibold tracking-[0.35em] uppercase text-[#d4a853] mb-3">
+          <p className="text-xs font-semibold tracking-[0.35em] uppercase text-[#91cbb7] mb-3">
             04 / PRICING
           </p>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
@@ -133,12 +133,12 @@ export default function Pricing() {
               key={plan.name}
               className={`relative flex flex-col p-8 rounded-[20px] border transition-all duration-500 hover:-translate-y-1 ${
                 plan.highlighted
-                  ? "border-[#d4a853]/30 bg-[#d4a853]/[0.04] shadow-[0_0_50px_-10px_rgba(212,168,83,0.15)]"
+                  ? "border-[#91cbb7]/30 bg-[#91cbb7]/[0.04] shadow-[0_0_50px_-10px_rgba(145,203,183,0.15)]"
                   : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
               }`}
             >
               {plan.highlighted && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3.5 py-1 text-[10px] font-bold tracking-[0.2em] uppercase text-black bg-[#d4a853] rounded-full shadow-md">
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3.5 py-1 text-[10px] font-bold tracking-[0.2em] uppercase text-black bg-[#91cbb7] rounded-full shadow-md">
                   Most Popular
                 </div>
               )}
@@ -169,7 +169,7 @@ export default function Pricing() {
                       height="16"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke={plan.highlighted ? "#d4a853" : "currentColor"}
+                      stroke={plan.highlighted ? "#91cbb7" : "currentColor"}
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -186,7 +186,7 @@ export default function Pricing() {
                 href="#signup"
                 className={`block text-center py-3 text-sm font-semibold rounded-full transition-all duration-300 ${
                   plan.highlighted
-                    ? "bg-[#d4a853] text-black hover:bg-[#c49a48] hover:shadow-[0_0_25px_rgba(212,168,83,0.35)]"
+                    ? "bg-[#91cbb7] text-black hover:bg-[#6e9d8e] hover:shadow-[0_0_25px_rgba(145,203,183,0.3)]"
                     : "border border-white/15 text-white/70 hover:text-white hover:border-white/30 bg-white/[0.02]"
                 }`}
               >

@@ -106,7 +106,7 @@ export default function Features() {
     <section
       ref={sectionRef}
       id="features"
-      className="relative bg-[#050505] min-h-screen flex flex-col justify-center py-24 sm:py-32 overflow-hidden z-20"
+      className="relative bg-[#0b1212] min-h-screen flex flex-col justify-center py-24 sm:py-32 overflow-hidden z-20"
     >
       <div className="section-gold-glow absolute inset-0 pointer-events-none" />
 
@@ -117,13 +117,13 @@ export default function Features() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
           {/* Left — text storytelling */}
           <div className="lg:col-span-5">
-            <p className="text-xs font-semibold tracking-[0.35em] uppercase text-[#d4a853] mb-3">
+            <p className="text-xs font-semibold tracking-[0.35em] uppercase text-[#91cbb7] mb-3">
               03 / POWERFUL FEATURES
             </p>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white mb-6 leading-[1.15]">
               Built for the
               <br />
-              <span className="text-[#d4a853]">Real World</span>
+              <span className="text-[#91cbb7]">Real World</span>
             </h2>
             <p className="text-sm sm:text-base text-white/50 leading-relaxed max-w-md">
               Every feature in PaisaMatters exists because we&apos;ve been on those
@@ -138,7 +138,7 @@ export default function Features() {
                 key={feature.title}
                 className="group flex gap-5 p-6 rounded-[20px] border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-all duration-500 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] hover:-translate-y-1"
               >
-                <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-[#d4a853]/[0.08] border border-[#d4a853]/15 flex items-center justify-center text-[#d4a853] group-hover:bg-[#d4a853]/[0.15] transition-colors duration-500">
+                <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-[#91cbb7]/[0.08] border border-[#91cbb7]/15 flex items-center justify-center text-[#91cbb7] group-hover:bg-[#91cbb7]/[0.15] transition-colors duration-500">
                   {feature.icon}
                 </div>
                 <div>

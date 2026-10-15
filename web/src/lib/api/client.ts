@@ -18,3 +18,7 @@ export function apiErrorMessage(error: unknown, fallback = "Please try again."):
   if (error.code === AxiosError.ERR_NETWORK) return "We couldn’t reach PaisaMatters. Check that the API is running and try again.";
   return fallback;
 }
+
+export function apiStatus(error: unknown): number | undefined {
+  return axios.isAxiosError(error) ? error.response?.status : undefined;
+}

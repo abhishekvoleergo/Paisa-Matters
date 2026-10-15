@@ -13,7 +13,49 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", ".keys"))));
-builder.Services.AddCors(options => options.AddPolicy("web", policy => policy.WithOrigins("http://localhost:3000").AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
+var allowedOrigins = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+{
+    "http://localhost:3000",
+    "https://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://127.0.0.1:3000"
+};
+var configuredOrigin = builder.Configuration["Application:AllowedOrigin"];
+if (!string.IsNullOrWhiteSpace(configuredOrigin)) allowedOrigins.Add(configuredOrigin.TrimEnd('/'));
+var configuredOrigins = builder.Configuration.GetSection("Application:AllowedOrigins").Get<string[]>();
+if (configuredOrigins is not null)
+{
+    foreach (var o in configuredOrigins)
+    {
+        if (!string.IsNullOrWhiteSpace(o)) allowedOrigins.Add(o.TrimEnd('/'));
+    }
+}
+static bool IsOriginAllowed(string? origin, IEnumerable<string> explicitOrigins)
+{
+    if (string.IsNullOrWhiteSpace(origin)) return false;
+    var trimmed = origin.TrimEnd('/');
+    if (explicitOrigins.Contains(trimmed, StringComparer.OrdinalIgnoreCase)) return true;
+    if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
+    {
+        return uri.Port == 3000 &&
+               (string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(uri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase));
+    }
+    return false;
+}
+builder.Services.AddCors(options =>
+{
+    void ConfigureCors(Microsoft.AspNetCore.Cors.Infrastructure.CorsPolicyBuilder policy)
+    {
+        policy.WithOrigins(allowedOrigins.ToArray())
+              .SetIsOriginAllowed(origin => IsOriginAllowed(origin, allowedOrigins))
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    }
+    options.AddPolicy("web", ConfigureCors);
+    options.AddDefaultPolicy(ConfigureCors);
+});
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options =>
 {
     options.Cookie.Name = "paisamatters.session";
@@ -41,7 +83,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddScoped<IAuthDataService>(_ => new AuthDataService(connectionString));
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITripDataService>(_ => new TripDataService(connectionString));
-builder.Services.AddScoped<ITripService, TripService>();
+builder.Services.AddScoped<ITripService>(services => new TripService(services.GetRequiredService<ITripDataService>(), services.GetRequiredService<IAuthService>(), builder.Configuration["Application:BaseUrl"] ?? "http://localhost:3000"));
 builder.Services.AddScoped<IPasswordHasher<AuthUser>, PasswordHasher<AuthUser>>();
 builder.Services.AddSingleton<SessionRegistry>();
 
@@ -58,7 +100,11 @@ app.Use(async (context, next) =>
     if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path.StartsWithSegments("/api"))
     {
         var origin = context.Request.Headers.Origin.ToString();
-        if (origin != "http://localhost:3000") { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+        if (!string.IsNullOrEmpty(origin) && !IsOriginAllowed(origin, allowedOrigins))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
     }
     await next();
 });

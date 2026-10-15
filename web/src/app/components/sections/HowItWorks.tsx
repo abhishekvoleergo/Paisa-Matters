@@ -146,7 +146,7 @@ export default function HowItWorks() {
     <section
       ref={sectionRef}
       id="how-it-works"
-      className="relative bg-[#050505] min-h-screen flex flex-col justify-center py-24 sm:py-32 overflow-hidden z-20"
+      className="relative bg-[#0b1212] min-h-screen flex flex-col justify-center py-24 sm:py-32 overflow-hidden z-20"
     >
       {/* Soft atmospheric background glow */}
       <div className="section-gold-glow absolute inset-0 pointer-events-none" />
@@ -157,7 +157,7 @@ export default function HowItWorks() {
       >
         {/* Section header */}
         <div className="text-center mb-16 md:mb-20">
-          <p className="text-xs font-semibold tracking-[0.3em] uppercase text-[#d4a853] mb-3">
+          <p className="text-xs font-semibold tracking-[0.3em] uppercase text-[#91cbb7] mb-3">
             01 / HOW IT WORKS
           </p>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white text-center">
@@ -178,12 +178,12 @@ export default function HowItWorks() {
               className="w-full min-w-0 group relative p-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-all duration-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] hover:-translate-y-1"
             >
               {/* Step number */}
-              <span className="text-[11px] font-mono tracking-widest text-[#d4a853]/70 mb-5 block font-medium">
+              <span className="text-[11px] font-mono tracking-widest text-[#91cbb7]/70 mb-5 block font-medium">
                 {step.number}
               </span>
 
               {/* Icon */}
-              <div className="w-12 h-12 rounded-xl bg-[#d4a853]/[0.08] border border-[#d4a853]/15 flex items-center justify-center text-[#d4a853] mb-5 group-hover:bg-[#d4a853]/[0.15] group-hover:border-[#d4a853]/30 transition-all duration-300">
+              <div className="w-12 h-12 rounded-xl bg-[#91cbb7]/[0.08] border border-[#91cbb7]/15 flex items-center justify-center text-[#91cbb7] mb-5 group-hover:bg-[#91cbb7]/[0.15] group-hover:border-[#91cbb7]/30 transition-all duration-300">
                 {step.icon}
               </div>
 

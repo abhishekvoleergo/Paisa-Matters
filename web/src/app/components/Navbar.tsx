@@ -29,7 +29,7 @@ export default function Navbar() {
       id="navbar"
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled
-          ? "bg-[#050505]/80 backdrop-blur-xl border-b border-white/[0.06]"
+          ? "bg-[#0b1212]/80 backdrop-blur-xl border-b border-white/[0.06]"
           : "bg-transparent"
       }`}
     >
@@ -44,7 +44,7 @@ export default function Navbar() {
             <span className="text-lg font-bold tracking-[0.2em] uppercase text-white">
               Paisa
             </span>
-            <span className="text-lg font-bold tracking-[0.2em] uppercase text-[#d4a853]">
+            <span className="text-lg font-bold tracking-[0.2em] uppercase text-[#91cbb7]">
               Matters
             </span>
           </Link>
@@ -77,7 +77,7 @@ export default function Navbar() {
             <a
               href="/auth?mode=signup"
               id="nav-signup"
-              className="px-6 py-2.5 text-sm font-semibold text-black bg-[#d4a853] hover:bg-[#c49a48] rounded-full transition-all duration-300 hover:shadow-[0_0_25px_rgba(212,168,83,0.35)] hover:scale-[1.02]"
+              className="px-6 py-2.5 text-sm font-semibold text-black bg-[#91cbb7] hover:bg-[#6e9d8e] rounded-full transition-all duration-300 hover:shadow-[0_0_25px_rgba(145,203,183,0.3)] hover:scale-[1.02]"
             >
               Sign up
             </a>
@@ -115,7 +115,7 @@ export default function Navbar() {
           mobileOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <div className="bg-[#050505]/95 backdrop-blur-xl border-t border-white/[0.04] px-6 py-4 flex flex-col gap-1">
+        <div className="bg-[#0b1212]/95 backdrop-blur-xl border-t border-white/[0.04] px-6 py-4 flex flex-col gap-1">
           {NAV_LINKS.map((link) => (
             <a
               key={link.href}
@@ -137,7 +137,7 @@ export default function Navbar() {
             </a>
             <a
               href="/auth?mode=signup"
-              className="px-4 py-2.5 text-sm font-semibold text-black bg-[#d4a853] hover:bg-[#c49a48] rounded-full text-center transition-all"
+              className="px-4 py-2.5 text-sm font-semibold text-black bg-[#91cbb7] hover:bg-[#6e9d8e] rounded-full text-center transition-all"
             >
               Sign up
             </a>

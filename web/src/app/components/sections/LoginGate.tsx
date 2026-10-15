@@ -44,7 +44,7 @@ export default function LoginGate() {
     <section
       ref={sectionRef}
       id="account"
-      className="relative bg-[#050505] min-h-screen flex flex-col justify-center py-24 sm:py-32 overflow-hidden z-20"
+      className="relative bg-[#0b1212] min-h-screen flex flex-col justify-center py-24 sm:py-32 overflow-hidden z-20"
     >
       <div className="section-gold-glow absolute inset-0 pointer-events-none" />
 
@@ -75,10 +75,10 @@ export default function LoginGate() {
           </div>
 
           {/* Dark overlay with lock and login options */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/85 via-[#050505]/95 to-[#050505]/85 backdrop-blur-sm flex flex-col items-center justify-center px-6">
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0b1212]/85 via-[#0b1212]/95 to-[#0b1212]/85 backdrop-blur-sm flex flex-col items-center justify-center px-6">
             <div className="max-w-md text-center flex flex-col items-center gap-6">
               {/* Lock icon */}
-              <div className="w-14 h-14 rounded-2xl bg-[#d4a853]/[0.08] border border-[#d4a853]/20 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-2xl bg-[#91cbb7]/[0.08] border border-[#91cbb7]/20 flex items-center justify-center">
                 <svg
                   width="24"
                   height="24"
@@ -88,7 +88,7 @@ export default function LoginGate() {
                   strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="text-[#d4a853]"
+                  className="text-[#91cbb7]"
                 >
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                   <path d="M7 11V7a5 5 0 0110 0v4" />
@@ -107,7 +107,7 @@ export default function LoginGate() {
                 <a
                   id="login-gate-signup"
                   href="/auth?mode=signup"
-                  className="w-full py-3.5 px-6 text-sm font-semibold text-black bg-[#d4a853] hover:bg-[#c49a48] rounded-full transition-all duration-300 hover:shadow-[0_0_25px_rgba(212,168,83,0.35)]"
+                  className="w-full py-3.5 px-6 text-sm font-semibold text-black bg-[#91cbb7] hover:bg-[#6e9d8e] rounded-full transition-all duration-300 hover:shadow-[0_0_25px_rgba(145,203,183,0.3)]"
                 >
                   Sign up
                 </a>

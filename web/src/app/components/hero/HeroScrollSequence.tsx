@@ -306,6 +306,16 @@ export default function HeroScrollSequence() {
 
       // Text animation: fully visible on load, smoothly fades out on scroll
       if (textContainerRef.current) {
+        const heroCopy = textContainerRef.current.querySelectorAll<HTMLElement>("[data-hero-text]");
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          gsap.set(heroCopy, { clearProps: "all" });
+        } else {
+          gsap.fromTo(
+            heroCopy,
+            { opacity: 0, y: 24, filter: "blur(6px)" },
+            { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.85, stagger: 0.14, ease: "power3.out", delay: 0.18 },
+          );
+        }
         gsap.fromTo(
           textContainerRef.current,
           {
@@ -337,7 +347,7 @@ export default function HeroScrollSequence() {
     <section
       ref={containerRef}
       id="hero"
-      className="relative bg-[#050505]"
+      className="relative bg-[#0b1212]"
       style={{ height: "100svh" }}
     >
       {/* Pinned viewport container — released only once the final frame is reached */}
@@ -355,13 +365,13 @@ export default function HeroScrollSequence() {
 
         {/* Loading state */}
         {!isReady && (
-          <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-[#050505]/72 backdrop-blur-[1px] transition-opacity duration-500">
+          <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-[#0b1212]/72 backdrop-blur-[1px] transition-opacity duration-500">
             <div className="flex flex-col items-center gap-6">
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold tracking-[0.25em] uppercase text-white">
                   Paisa
                 </span>
-                <span className="text-lg font-bold tracking-[0.25em] uppercase text-[#d4a853]">
+                <span className="text-lg font-bold tracking-[0.25em] uppercase text-[#91cbb7]">
                   Matters
                 </span>
               </div>
@@ -371,7 +381,7 @@ export default function HeroScrollSequence() {
               <div className="flex items-center gap-3">
                 <div className="w-32 h-[2px] bg-white/[0.06] rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-[#d4a853]/60 rounded-full transition-all duration-300 ease-out"
+                    className="h-full bg-[#91cbb7]/60 rounded-full transition-all duration-300 ease-out"
                     style={{ width: `${loadingProgress}%` }}
                   />
                 </div>
@@ -416,7 +426,7 @@ export default function HeroScrollSequence() {
         {/* Dark transition overlay (fades in at end of hero to transition into black) */}
         <div
           ref={darknessOverlayRef}
-          className="absolute inset-0 bg-[#050505] pointer-events-none z-[15] opacity-0"
+          className="absolute inset-0 bg-[#0b1212] pointer-events-none z-[15] opacity-0"
         />
 
         {/* Hero text content */}
@@ -429,7 +439,7 @@ export default function HeroScrollSequence() {
               {/* Tagline */}
               <p
                 data-hero-text
-                className="text-[11px] font-semibold tracking-[0.28em] uppercase text-[#d4a853] sm:text-sm"
+                className="text-[11px] font-semibold tracking-[0.28em] uppercase text-[#91cbb7] sm:text-sm"
               >
                 Travel Together · Split Effortlessly
               </p>
@@ -441,7 +451,7 @@ export default function HeroScrollSequence() {
               >
                 Every Trip Deserves
                 <br />
-                <span className="text-[#d4a853]">Fair Splits</span>
+                <span className="text-[#91cbb7]">Fair Splits</span>
               </h1>
 
               {/* Subtitle */}
@@ -461,7 +471,7 @@ export default function HeroScrollSequence() {
                 <a
                   href="/auth?mode=signup"
                   id="hero-cta-primary"
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d4a853] px-7 py-3.5 text-sm font-semibold text-black transition-all duration-300 hover:scale-[1.02] hover:bg-[#c49a48] hover:shadow-[0_0_30px_rgba(212,168,83,0.35)]"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#91cbb7] px-7 py-3.5 text-sm font-semibold text-black transition-all duration-300 hover:scale-[1.02] hover:bg-[#6e9d8e] hover:shadow-[0_0_30px_rgba(145,203,183,0.3)]"
                 >
                   Get Started Free
                   <span aria-hidden="true">→</span>

@@ -5,4 +5,11 @@ public static class Procedures
     public const string CreateLoginAccount = "dbo.usp_CreateLoginAccount";
     public const string CreateTrip = "dbo.usp_CreateTrip";
     public const string GetTripsByUser = "dbo.usp_GetTripsByUser";
+    public const string CreateTripInvite = "dbo.usp_CreateTripInvite";
+    public const string DeleteTrip = "dbo.usp_DeleteTrip";
+    public const string GetTripById = "dbo.usp_GetTripById";
+    public const string UpdateTrip = "dbo.usp_UpdateTrip";
+    public const string GetTripMembers = "dbo.usp_GetTripMembers";
+    public const string GetTripInviteByTokenHash = "dbo.usp_GetTripInviteByTokenHash";
+    public const string JoinTripByInvite = "dbo.usp_JoinTripByInvite";
 }
