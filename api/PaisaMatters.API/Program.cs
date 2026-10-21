@@ -83,12 +83,24 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddScoped<IAuthDataService>(_ => new AuthDataService(connectionString));
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITripDataService>(_ => new TripDataService(connectionString));
+builder.Services.AddScoped<IExpenseDataService>(_ => new ExpenseDataService(connectionString));
 builder.Services.AddScoped<ITripService>(services => new TripService(services.GetRequiredService<ITripDataService>(), services.GetRequiredService<IAuthService>(), builder.Configuration["Application:BaseUrl"] ?? "http://localhost:3000"));
+builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IPasswordHasher<AuthUser>, PasswordHasher<AuthUser>>();
 builder.Services.AddSingleton<SessionRegistry>();
 
 var app = builder.Build();
-if (app.Environment.IsDevelopment()) app.MapOpenApi();
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/openapi/v1.json", "PaisaMatters API v1");
+        options.RoutePrefix = "swagger";
+        options.DisplayRequestDuration();
+        options.EnablePersistAuthorization();
+    });
+}
 app.UseExceptionHandler(error => error.Run(async context =>
 {
     context.Response.StatusCode = StatusCodes.Status500InternalServerError;

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using PaisaMatters.DomainModel;
 using PaisaMatters.ServiceInterface;
+using Microsoft.AspNetCore.Authorization;
 
 namespace PaisaMatters.API.Controllers;
 
@@ -56,7 +57,8 @@ public sealed class AuthController(IAuthService auth, IPasswordHasher<AuthUser> 
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme); return NoContent();
     }
 
-    [HttpGet("me"), Microsoft.AspNetCore.Authorization.Authorize]
+    [HttpGet("me")]
+    [Authorize]
     public async Task<IActionResult> Me()
     {
         if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id)) return Unauthorized();

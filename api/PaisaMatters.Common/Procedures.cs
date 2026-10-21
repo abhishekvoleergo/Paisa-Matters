@@ -12,4 +12,13 @@ public static class Procedures
     public const string GetTripMembers = "dbo.usp_GetTripMembers";
     public const string GetTripInviteByTokenHash = "dbo.usp_GetTripInviteByTokenHash";
     public const string JoinTripByInvite = "dbo.usp_JoinTripByInvite";
+    public const string CreateTripExpense = "dbo.usp_CreateTripExpense";
+    public const string GetTripExpenses = "dbo.usp_GetTripExpenses";
+    public const string GetTripExpenseById = "dbo.usp_GetTripExpenseById";
+    public const string DeleteTripExpense = "dbo.usp_DeleteTripExpense";
+    public const string GetTripExpenseBalances = "dbo.usp_GetTripExpenseBalances";
+    public const string GetSuggestedSettlements = "dbo.usp_GetSuggestedSettlements";
+    public const string CreateTripSettlement = "dbo.usp_CreateTripSettlement";
+    public const string GetTripSettlements = "dbo.usp_GetTripSettlements";
+    public const string UpdateTripSettlementStatus = "dbo.usp_UpdateTripSettlementStatus";
 }
