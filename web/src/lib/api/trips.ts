@@ -5,6 +5,7 @@ export const tripRoutes = {
   home: "/home",
   details: (tripId: string) => `/trips/${encodeURIComponent(tripId)}`,
   edit: (tripId: string) => `/trips/${encodeURIComponent(tripId)}/edit`,
+  settlements: (tripId: string) => `/trips/${encodeURIComponent(tripId)}/settlements`,
   join: (inviteToken: string) => `/join/${encodeURIComponent(inviteToken)}`,
 };
 
