@@ -77,9 +77,33 @@ public sealed class ExpenseDataService(string connectionString) : IExpenseDataSe
         await using var connection = await OpenAsync(token); await using var command = Procedure(connection, Procedures.CreateTripSettlement);
         AddGuid(command, "@TripId", tripId); AddGuid(command, "@PaidByUserId", request.PaidByUserId); AddGuid(command, "@ReceivedByUserId", request.ReceivedByUserId); AddDecimal(command, "@Amount", request.Amount); AddGuid(command, "@CreatedBy", userId);
         command.Parameters.Add("@Notes", SqlDbType.NVarChar, 500).Value = string.IsNullOrWhiteSpace(request.Notes) ? DBNull.Value : request.Notes.Trim();
-        command.Parameters.Add("@SettlementId", SqlDbType.UniqueIdentifier).Value = DBNull.Value;
         await using var reader = await command.ExecuteReaderAsync(token); if (!await reader.ReadAsync(token)) throw new InvalidOperationException("Settlement procedure did not return a result.");
         return new(reader.GetGuid(reader.GetOrdinal("SettlementId")), reader.GetString(reader.GetOrdinal("Status")));
+    }
+
+    public async Task<SettlementSaveResult> UpdateSettlementAsync(Guid tripId, Guid settlementId, UpdateTripSettlementRequest request, CancellationToken token)
+    {
+        await using var connection = await OpenAsync(token); await using var command = Procedure(connection, Procedures.UpdateTripSettlement);
+        AddGuid(command, "@TripId", tripId); AddGuid(command, "@SettlementId", settlementId); AddGuid(command, "@PaidByUserId", request.PaidByUserId); AddGuid(command, "@ReceivedByUserId", request.ReceivedByUserId); AddDecimal(command, "@Amount", request.Amount);
+        command.Parameters.Add("@Notes", SqlDbType.NVarChar, 500).Value = string.IsNullOrWhiteSpace(request.Notes) ? DBNull.Value : request.Notes.Trim();
+        await command.ExecuteNonQueryAsync(token); return new(settlementId, "Pending");
+    }
+
+    public async Task<IReadOnlyList<MyTripSettlementResponse>> GetMySettlementsAsync(Guid tripId, Guid userId, CancellationToken token)
+    {
+        await using var connection = await OpenAsync(token); await using var command = Procedure(connection, Procedures.GetMyTripSettlements); AddGuid(command, "@TripId", tripId); AddGuid(command, "@UserId", userId);
+        await using var reader = await command.ExecuteReaderAsync(token); var result = new List<MyTripSettlementResponse>();
+        while (await reader.ReadAsync(token)) result.Add(new(reader.GetGuid(reader.GetOrdinal("DebtorId")), reader.GetString(reader.GetOrdinal("DebtorName")), reader.GetGuid(reader.GetOrdinal("CreditorId")), reader.GetString(reader.GetOrdinal("CreditorName")), reader.GetString(reader.GetOrdinal("SettlementType")), reader.GetDecimal(reader.GetOrdinal("OriginalAmount")), reader.GetDecimal(reader.GetOrdinal("CompletedAmount")), reader.GetDecimal(reader.GetOrdinal("PendingAmount")), reader.GetDecimal(reader.GetOrdinal("RemainingAmount")), Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("ProgressPercent")))));
+        return result;
+    }
+
+    public async Task<IReadOnlyList<TripSettlementResponse>> GetSettlementHistoryAsync(Guid tripId, Guid userId, string? status, CancellationToken token)
+    {
+        await using var connection = await OpenAsync(token); await using var command = Procedure(connection, Procedures.GetTripSettlementHistory); AddGuid(command, "@TripId", tripId); AddGuid(command, "@UserId", userId);
+        command.Parameters.Add("@Status", SqlDbType.NVarChar, 20).Value = string.IsNullOrWhiteSpace(status) ? DBNull.Value : status;
+        await using var reader = await command.ExecuteReaderAsync(token); var result = new List<TripSettlementResponse>();
+        while (await reader.ReadAsync(token)) result.Add(new(reader.GetGuid(reader.GetOrdinal("SettlementId")), reader.GetGuid(reader.GetOrdinal("TripId")), reader.GetGuid(reader.GetOrdinal("PaidByUserId")), reader.GetString(reader.GetOrdinal("PaidByName")), reader.GetGuid(reader.GetOrdinal("ReceivedByUserId")), reader.GetString(reader.GetOrdinal("ReceivedByName")), reader.GetDecimal(reader.GetOrdinal("Amount")), reader.GetDateTime(reader.GetOrdinal("SettlementDate")), reader.GetString(reader.GetOrdinal("Status")), NullableString(reader, "Notes"), reader.GetGuid(reader.GetOrdinal("CreatedBy")), reader.GetDateTime(reader.GetOrdinal("CreatedAt")), NullableDate(reader, "UpdatedAt")));
+        return result;
     }
 
     public async Task<IReadOnlyList<TripSettlementResponse>> GetSettlementsAsync(Guid tripId, CancellationToken token)

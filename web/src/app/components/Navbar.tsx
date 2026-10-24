@@ -23,6 +23,14 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, []);
+
   return (
     <nav
       ref={navRef}
@@ -79,7 +87,7 @@ export default function Navbar() {
               id="nav-signup"
               className="px-6 py-2.5 text-sm font-semibold text-black bg-[#91cbb7] hover:bg-[#6e9d8e] rounded-full transition-all duration-300 hover:shadow-[0_0_25px_rgba(145,203,183,0.3)] hover:scale-[1.02]"
             >
-              Sign up
+              Sign Up
             </a>
           </div>
 
@@ -87,8 +95,11 @@ export default function Navbar() {
           <button
             id="mobile-menu-toggle"
             onClick={() => setMobileOpen(!mobileOpen)}
+            type="button"
             className="lg:hidden flex flex-col gap-1.5 p-2"
-            aria-label="Toggle menu"
+            aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-navigation"
           >
             <span
               className={`block w-5 h-[1.5px] bg-white/70 transition-all duration-300 ${
@@ -111,9 +122,12 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       <div
+        id="mobile-navigation"
         className={`lg:hidden overflow-hidden transition-all duration-500 ${
           mobileOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
         }`}
+        aria-hidden={!mobileOpen}
+        inert={!mobileOpen}
       >
         <div className="bg-[#0b1212]/95 backdrop-blur-xl border-t border-white/[0.04] px-6 py-4 flex flex-col gap-1">
           {NAV_LINKS.map((link) => (
@@ -139,7 +153,7 @@ export default function Navbar() {
               href="/auth?mode=signup"
               className="px-4 py-2.5 text-sm font-semibold text-black bg-[#91cbb7] hover:bg-[#6e9d8e] rounded-full text-center transition-all"
             >
-              Sign up
+              Sign Up
             </a>
           </div>
         </div>
@@ -147,3 +161,4 @@ export default function Navbar() {
     </nav>
   );
 }
+

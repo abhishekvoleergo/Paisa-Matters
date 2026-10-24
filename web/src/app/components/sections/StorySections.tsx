@@ -8,7 +8,28 @@ export default function StorySections() {
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => entries.forEach((entry) => entry.target.classList.toggle("is-visible", entry.isIntersecting)), { threshold: 0.18 });
     document.querySelectorAll(".reveal").forEach((element) => observer.observe(element));
-    return () => observer.disconnect();
+    const scenes = Array.from(document.querySelectorAll<HTMLElement>(".hero-scene, .editorial-section"));
+    const updateScene = () => {
+      const center = window.innerHeight * 0.5;
+      const active = scenes.reduce<HTMLElement | null>((nearest, scene) => {
+        const bounds = scene.getBoundingClientRect();
+        if (bounds.top <= center && bounds.bottom >= center) return scene;
+        if (!nearest) return scene;
+        const nearestBounds = nearest.getBoundingClientRect();
+        return Math.abs(bounds.top + bounds.height / 2 - center) < Math.abs(nearestBounds.top + nearestBounds.height / 2 - center) ? scene : nearest;
+      }, null);
+      if (active) document.documentElement.dataset.scene = active.dataset.scene || active.id || (active.classList.contains("ai-section") ? "voice" : active.classList.contains("payment-section") ? "payment-section" : "hero");
+    };
+    const sceneObserver = new IntersectionObserver(updateScene, { rootMargin: "-42% 0px -42% 0px", threshold: 0 });
+    scenes.forEach((scene) => sceneObserver.observe(scene));
+    window.addEventListener("resize", updateScene, { passive: true });
+    updateScene();
+    return () => {
+      observer.disconnect();
+      sceneObserver.disconnect();
+      window.removeEventListener("resize", updateScene);
+      delete document.documentElement.dataset.scene;
+    };
   }, []);
   return <>
     <section id="how-it-works" className="editorial-section how-section"><div className="section-kicker">01 — THE ROUTE</div><div className="reveal"><h2>How PaisaMatters<br /><em>works.</em></h2><p className="section-intro">Four simple steps from trip creation to settlement. No spreadsheets. No arguments.</p></div><div className="route-line reveal">{steps.map(([number,title,copy]) => <article key={number} className="route-step"><span>{number}</span><div className="route-dot" /><h3>{title}</h3><p>{copy}</p></article>)}</div></section>

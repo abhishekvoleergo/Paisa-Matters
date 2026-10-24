@@ -88,14 +88,14 @@ export default function AuthPage() {
   );
 
   return (
-    <main className="auth-scene min-h-screen overflow-x-hidden px-5 py-8 text-[#f0eee6] sm:px-8">
+    <main className={`auth-scene min-h-screen overflow-x-hidden px-5 py-8 text-[#f0eee6] sm:px-8 ${mode === "signup" ? "auth-signup-scene" : "auth-login-scene"}`}>
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col">
         <header className="flex items-center justify-between">
           <Link href="/" className="text-sm font-bold uppercase tracking-[0.2em] text-white">Paisa<span className="text-[#91cbb7]">Matters</span></Link>
           <Link href="/" className="text-xs text-white/50 transition hover:text-white">Back to home</Link>
         </header>
         <div className="grid flex-1 items-center gap-12 py-12 lg:grid-cols-[1fr_0.92fr] lg:gap-20">
-          <section className="mx-auto max-w-lg lg:mx-0">
+          <section className="order-2 mx-auto max-w-lg lg:order-1 lg:mx-0">
             <p className="mb-5 font-mono text-[10px] tracking-[0.3em] text-[#91cbb7]">TRAVEL TOGETHER · SETTLE FAIRLY</p>
             <h1 className="font-serif text-4xl leading-tight tracking-tight sm:text-5xl">Good trips begin<br /><em className="text-[#91cbb7]">with a clear plan.</em></h1>
             <p className="mt-6 max-w-md text-sm leading-7 text-white/55">Keep the group in sync, split costs fairly, and spend more of the journey making memories.</p>
@@ -104,7 +104,7 @@ export default function AuthPage() {
             </div>
           </section>
 
-          <section className="mx-auto w-full max-w-[440px]" aria-label="Account access">
+          <section className="order-1 mx-auto w-full max-w-[440px] lg:order-2" aria-label="Account access">
             <div className="auth-card-perspective">
               <div className={`auth-card ${mode === "signup" ? "is-flipped" : ""}`}>
                 <article aria-hidden={mode !== "login"} inert={mode !== "login"} className="auth-face rounded-[26px] border border-white/10 bg-[#15211f]/95 p-6 shadow-[0_30px_100px_rgba(0,0,0,.6)] sm:p-9">
@@ -117,7 +117,7 @@ export default function AuthPage() {
                     {error && <p role="alert" className="rounded-lg border border-[#df947f]/30 bg-[#df947f]/[0.08] px-3 py-2 text-xs text-[#f0b4a3]">{error}</p>}
                     <button disabled={busy || inactive} className="w-full rounded-full bg-[#91cbb7] px-5 py-3.5 text-sm font-semibold text-[#10201b] transition hover:bg-[#b8dfd0] disabled:cursor-wait disabled:opacity-60">{busy ? "Signing in…" : "Login"}</button>
                   </form>
-                  <p className="mt-5 text-center text-xs text-white/45">New to PaisaMatters? <button type="button" onClick={() => changeMode("signup")} className="font-semibold text-[#a7d3c2] hover:text-white">Create an account</button></p>
+                  <p className="mt-5 text-center text-xs text-white/45">New to PaisaMatters? <button type="button" onClick={() => changeMode("signup")} className="font-semibold text-[#a7d3c2] hover:text-white">Create your account</button></p>
                   {accessSwitch}
                 </article>
                 <article aria-hidden={mode !== "signup"} inert={mode !== "signup"} className="auth-face auth-face-back rounded-[26px] border border-white/10 bg-[#15211f]/95 p-6 shadow-[0_30px_100px_rgba(0,0,0,.6)] sm:p-9">
@@ -132,7 +132,7 @@ export default function AuthPage() {
                     {error && <p role="alert" className="rounded-lg border border-[#df947f]/30 bg-[#df947f]/[0.08] px-3 py-2 text-xs text-[#f0b4a3]">{error}</p>}
                     <button disabled={busy || inactive} className="w-full rounded-full bg-[#91cbb7] px-5 py-3.5 text-sm font-semibold text-[#10201b] transition hover:bg-[#b8dfd0] disabled:cursor-wait disabled:opacity-60">{busy ? "Creating account…" : "Sign up"}</button>
                   </form>
-                  <p className="mt-4 text-center text-xs text-white/45">Already have an account? <button type="button" onClick={() => changeMode("login")} className="font-semibold text-[#a7d3c2] hover:text-white">Login</button></p>
+                  <p className="mt-4 text-center text-xs text-white/45">Already have an account? <button type="button" onClick={() => changeMode("login")} className="font-semibold text-[#a7d3c2] hover:text-white">Log in</button></p>
                   {accessSwitch}
                   <p className="mt-2 text-center text-[10px] text-white/35">Public registration creates a standard User account.</p>
                 </article>
@@ -145,3 +145,7 @@ export default function AuthPage() {
     </main>
   );
 }
+
+
+
+

@@ -21,4 +21,7 @@ public static class Procedures
     public const string CreateTripSettlement = "dbo.usp_CreateTripSettlement";
     public const string GetTripSettlements = "dbo.usp_GetTripSettlements";
     public const string UpdateTripSettlementStatus = "dbo.usp_UpdateTripSettlementStatus";
+    public const string UpdateTripSettlement = "dbo.usp_UpdateTripSettlement";
+    public const string GetMyTripSettlements = "dbo.usp_GetMyTripSettlements";
+    public const string GetTripSettlementHistory = "dbo.usp_GetTripSettlementHistory";
 }
