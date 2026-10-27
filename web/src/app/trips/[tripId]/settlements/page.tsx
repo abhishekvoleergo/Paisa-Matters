@@ -2,57 +2,633 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiErrorMessage, apiStatus } from "@/lib/api/client";
 import { getCurrentUser } from "@/lib/api";
-import { expensesApi, Settlement, SettlementDashboardItem } from "@/lib/api/expenses";
+import {
+  expensesApi,
+  Settlement,
+  SettlementDashboardItem,
+} from "@/lib/api/expenses";
 import { TripDetails, TripMember, tripsApi, tripRoutes } from "@/lib/api/trips";
+import SettlementCard from "@/app/components/settlements/SettlementCard";
+import SettlementFormModal from "@/app/components/settlements/SettlementFormModal";
+import PaymentInfoModal from "@/app/components/settlements/PaymentInfoModal";
 
-const panel = "rounded-[22px] border border-white/[0.08] bg-[#121d1b] p-5 sm:p-7";
-const field = "mt-1.5 w-full rounded-xl border border-white/10 bg-[#0c1514] px-3 py-2.5 text-sm text-[#f0eee6] outline-none focus:border-[#91cbb7]/60";
-const money = (value: number, currency: string) => new Intl.NumberFormat(undefined, { style: "currency", currency, minimumFractionDigits: 2 }).format(value);
+const panel =
+  "rounded-[22px] border border-white/[0.08] bg-[#121d1b] p-6 sm:p-8";
+const money = (value: number, currency: string) =>
+  new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: currency || "INR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Math.round(value));
+
 type Filter = "" | "Pending" | "Completed" | "Cancelled";
 
 export default function SettlementOverviewPage() {
-  const { tripId } = useParams<{ tripId: string }>(); const router = useRouter();
-  const [trip, setTrip] = useState<TripDetails | null>(null); const [members, setMembers] = useState<TripMember[]>([]); const [userId, setUserId] = useState("");
-  const [dashboard, setDashboard] = useState<SettlementDashboardItem[]>([]); const [history, setHistory] = useState<Settlement[]>([]); const [filter, setFilter] = useState<Filter>(""); const [tab, setTab] = useState<"You Pay" | "You Receive">("You Pay");
-  const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [notice, setNotice] = useState(""); const [busy, setBusy] = useState(false);
-  const [formOpen, setFormOpen] = useState(false); const [editing, setEditing] = useState<Settlement | null>(null); const [payer, setPayer] = useState(""); const [receiver, setReceiver] = useState(""); const [amount, setAmount] = useState(""); const [notes, setNotes] = useState("");
-  const validTripId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(tripId);
-  const activeMembers = useMemo(() => members.filter(member => member.status.toLowerCase() === "active"), [members]);
-  const refresh = useCallback(async () => {
+  const { tripId } = useParams<{ tripId: string }>();
+  const router = useRouter();
+
+  const [trip, setTrip] = useState<TripDetails | null>(null);
+  const [members, setMembers] = useState<TripMember[]>([]);
+  const [userId, setUserId] = useState("");
+  const [dashboard, setDashboard] = useState<SettlementDashboardItem[]>([]);
+  const [history, setHistory] = useState<Settlement[]>([]);
+  const [filter, setFilter] = useState<Filter>("");
+  const [activeTab, setActiveTab] = useState<"You Pay" | "You Receive">("You Pay");
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  // Modal states
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingSettlement, setEditingSettlement] = useState<Settlement | null>(null);
+  const [prefilledData, setPrefilledData] = useState<{
+    settlementId?: string;
+    paidByUserId: string;
+    receivedByUserId: string;
+    amount: number;
+    notes?: string;
+  } | null>(null);
+  const [formError, setFormError] = useState("");
+
+  // Payment Info Modal
+  const [paymentInfoReceiver, setPaymentInfoReceiver] = useState<string | null>(null);
+
+  const validTripId =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      tripId,
+    );
+
+  const activeMembers = useMemo(
+    () => members.filter((m) => m.status.toLowerCase() === "active"),
+    [members],
+  );
+
+  const currency = trip?.currencyCode ?? "INR";
+
+  const refreshData = useCallback(async () => {
     setError("");
-    try { const [balances, records] = await Promise.all([expensesApi.settlementDashboard(tripId), expensesApi.settlementHistory(tripId, filter)]); setDashboard(balances); setHistory(records); }
-    catch (cause) { if (apiStatus(cause) === 401) { router.replace(`/auth?mode=login&returnUrl=${encodeURIComponent(tripRoutes.settlements(tripId))}`); return; } setError(apiErrorMessage(cause, "Settlement information could not be loaded.")); }
-    finally { setLoading(false); }
+    try {
+      const [dashboardResult, historyResult] = await Promise.all([
+        expensesApi.settlementDashboard(tripId),
+        expensesApi.settlementHistory(tripId, filter),
+      ]);
+      setDashboard(dashboardResult);
+      setHistory(historyResult);
+    } catch (cause) {
+      if (apiStatus(cause) === 401) {
+        router.replace(
+          `/auth?mode=login&returnUrl=${encodeURIComponent(
+            tripRoutes.settlements(tripId),
+          )}`,
+        );
+        return;
+      }
+      setError(
+        apiErrorMessage(cause, "Settlement information could not be refreshed."),
+      );
+    }
   }, [tripId, filter, router]);
-  useEffect(() => { if (!validTripId) return; let live = true;
-    Promise.all([tripsApi.getById(tripId), tripsApi.getMembers(tripId), getCurrentUser()]).then(async ([details, list, profile]) => {
-      if (!live) return; setTrip(details); setMembers(list); setUserId(profile.userId);
-      const [balances, records] = await Promise.all([expensesApi.settlementDashboard(tripId), expensesApi.settlementHistory(tripId, filter)]);
-      if (live) { setDashboard(balances); setHistory(records); setError(""); }
-    }).catch(cause => { if (live) setError(apiErrorMessage(cause, "Settlement information could not be loaded.")); }).finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
-  }, [tripId, validTripId, filter]);
-  function openCreate() { setEditing(null); setPayer(userId); setReceiver(""); setAmount(""); setNotes(""); setFormOpen(true); }
-  function openEdit(row: Settlement) { setEditing(row); setPayer(row.paidByUserId); setReceiver(row.receivedByUserId); setAmount(row.amount.toFixed(2)); setNotes(row.notes || ""); setFormOpen(true); }
-  async function save(event: FormEvent) { event.preventDefault(); if (busy || !payer || !receiver || payer === receiver || Number(amount) <= 0) return; setBusy(true); setError(""); setNotice("");
-    try { const payload = { paidByUserId: payer, receivedByUserId: receiver, amount: Number(amount), notes: notes.trim() || undefined }; if (editing) await expensesApi.editSettlement(tripId, editing.settlementId, payload); else await expensesApi.createSettlement(tripId, payload); setFormOpen(false); setNotice(editing ? "Pending repayment updated." : "Repayment recorded as pending. Payment verification is not connected."); await refresh(); }
-    catch (cause) { setError(apiErrorMessage(cause, "The repayment could not be saved.")); } finally { setBusy(false); }
+
+  useEffect(() => {
+    if (!validTripId) return;
+    let isSubscribed = true;
+
+    Promise.all([
+      tripsApi.getById(tripId),
+      tripsApi.getMembers(tripId),
+      getCurrentUser(),
+      expensesApi.settlementDashboard(tripId),
+      expensesApi.settlementHistory(tripId, filter),
+    ])
+      .then(([details, memberList, profile, balances, records]) => {
+        if (!isSubscribed) return;
+        setTrip(details);
+        setMembers(memberList);
+        setUserId(profile.userId);
+        setDashboard(balances);
+        setHistory(records);
+        setError("");
+      })
+      .catch((cause) => {
+        if (!isSubscribed) return;
+        if (apiStatus(cause) === 401) {
+          router.replace(
+            `/auth?mode=login&returnUrl=${encodeURIComponent(
+              tripRoutes.settlements(tripId),
+            )}`,
+          );
+          return;
+        }
+        setError(
+          apiErrorMessage(cause, "Settlement information could not be loaded."),
+        );
+      })
+      .finally(() => {
+        if (isSubscribed) setLoading(false);
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [tripId, validTripId, filter, router]);
+
+  // Open Create Form (manual)
+  function handleOpenCreate() {
+    setEditingSettlement(null);
+    setPrefilledData({
+      paidByUserId: userId,
+      receivedByUserId: "",
+      amount: 0,
+    });
+    setFormError("");
+    setFormOpen(true);
   }
-  async function setStatus(row: Settlement, status: "Completed" | "Cancelled") { if (busy) return; if (status === "Completed" && !window.confirm("Confirm that the transfer has actually been received?")) return; setBusy(true); setError(""); setNotice(""); try { await expensesApi.updateSettlement(tripId, row.settlementId, status); setNotice(`Repayment marked ${status.toLowerCase()}.`); await refresh(); } catch (cause) { setError(apiErrorMessage(cause, "Repayment status could not be updated.")); } finally { setBusy(false); } }
-  const payItems = dashboard.filter(item => item.settlementType === tab);
-  if (!validTripId) return <main className="min-h-screen bg-[#0b1212] px-5 py-12 text-[#f0eee6]"><p role="alert" className="mx-auto max-w-4xl">This trip link is not valid.</p></main>;
-  if (loading && !trip) return <main className="min-h-screen bg-[#0b1212] px-5 py-12 text-[#f0eee6]"><p role="status" className="mx-auto max-w-5xl">Loading settlement overview…</p></main>;
-  return <main className="min-h-screen bg-[#0b1212] text-[#f0eee6]"><header className="border-b border-white/[0.07] bg-[#0d1716]"><div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8"><Link href="/home" className="text-sm font-bold uppercase tracking-[0.2em]">Paisa<span className="text-[#91cbb7]">Matters</span></Link><Link href={tripRoutes.details(tripId)} className="text-xs text-white/55">← Back to trip</Link></div></header>
-    <div className="mx-auto max-w-6xl px-5 pb-16 pt-8 sm:px-8 sm:pt-12"><p className="font-mono text-[10px] tracking-[0.25em] text-[#91cbb7]">{trip?.tripName ?? "TRIP"} · SETTLEMENTS</p><div className="mt-3 flex flex-wrap items-end justify-between gap-4"><div><h1 className="font-serif text-4xl sm:text-5xl">Settlement overview</h1><p className="mt-3 text-sm text-white/45">Balances and repayment records for this trip.</p></div><button type="button" onClick={openCreate} className="rounded-full bg-[#91cbb7] px-5 py-3 text-xs font-semibold text-[#10201b]">Record repayment</button></div>
-      {notice && <p role="status" className="mt-6 rounded-xl border border-[#91cbb7]/20 bg-[#91cbb7]/[0.07] p-3 text-sm text-[#b8dfd0]">{notice}</p>}{error && <div role="alert" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#df947f]/30 bg-[#df947f]/[0.08] p-3 text-sm text-[#f0b4a3]"><span>{error}</span><button type="button" onClick={() => void refresh()} className="underline">Retry</button></div>}
-      <section className={`${panel} mt-7`}><div className="flex flex-wrap items-center justify-between gap-4"><h2 className="font-serif text-2xl">Your balances</h2><div className="flex rounded-full border border-white/10 p-1"><button type="button" onClick={() => setTab("You Pay")} className={`rounded-full px-4 py-2 text-xs ${tab === "You Pay" ? "bg-[#91cbb7] text-[#10201b]" : "text-white/60"}`}>You Pay</button><button type="button" onClick={() => setTab("You Receive")} className={`rounded-full px-4 py-2 text-xs ${tab === "You Receive" ? "bg-[#91cbb7] text-[#10201b]" : "text-white/60"}`}>You Receive</button></div></div>
-      {loading ? <p role="status" className="mt-5 text-sm text-white/45">Loading balances…</p> : payItems.length === 0 ? <p className="mt-6 rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-white/45">No balances to show here.</p> : <ul className="mt-4 grid gap-4 md:grid-cols-2">{payItems.map((item, index) => <li key={`${item.debtorId}-${item.creditorId}-${index}`} className="rounded-xl border border-white/[0.07] bg-black/10 p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-sm">{tab === "You Pay" ? item.creditorName : item.debtorName}</p><p className="mt-1 text-[10px] text-white/40">{tab === "You Pay" ? "You owe" : "Owes you"}</p></div><strong className="text-sm text-[#b8dfd0]">{money(item.remainingAmount, trip?.currencyCode ?? "INR")}</strong></div><dl className="mt-4 grid grid-cols-2 gap-3 text-[11px]"><div><dt className="text-white/35">Original</dt><dd className="mt-1">{money(item.originalAmount, trip?.currencyCode ?? "INR")}</dd></div><div><dt className="text-white/35">Completed</dt><dd className="mt-1">{money(item.completedAmount, trip?.currencyCode ?? "INR")}</dd></div><div><dt className="text-white/35">Pending confirmation</dt><dd className="mt-1">{money(item.pendingAmount, trip?.currencyCode ?? "INR")}</dd></div><div><dt className="text-white/35">Remaining</dt><dd className="mt-1">{money(item.remainingAmount, trip?.currencyCode ?? "INR")}</dd></div></dl><div className="mt-4"><div className="flex justify-between text-[10px] text-white/40"><span>Progress</span><span>{Math.max(0, Math.min(100, item.progressPercent)).toFixed(0)}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[#91cbb7]" style={{ width: `${Math.max(0, Math.min(100, item.progressPercent))}%` }} /></div></div></li>)}</ul>}</section>
-      <section className={`${panel} mt-7`}><div className="flex flex-wrap items-center justify-between gap-4"><div><h2 className="font-serif text-2xl">Repayment history</h2><p className="mt-1 text-xs text-white/40">Pending payments are not included in completed totals.</p></div><label className="text-xs text-white/55">Filter<select className="ml-2 rounded-lg border border-white/10 bg-[#0c1514] px-3 py-2" value={filter} onChange={event => setFilter(event.target.value as Filter)}>{[["", "All"], ["Pending", "Pending"], ["Completed", "Completed"], ["Cancelled", "Cancelled"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
-      {loading ? <p role="status" className="mt-5 text-sm text-white/45">Loading repayment history…</p> : history.length === 0 ? <p className="mt-5 text-sm text-white/45">No repayments match this filter.</p> : <ul className="mt-4 divide-y divide-white/[0.07]">{history.map(row => <li key={row.settlementId} className="py-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm">{row.paidByName} <span className="text-white/35">paid</span> {row.receivedByName} · <strong>{money(row.amount, trip?.currencyCode ?? "INR")}</strong></p><p className="mt-1 text-[10px] text-white/40">{new Date(row.settlementDate).toLocaleString()} {row.notes ? `· ${row.notes}` : ""}</p></div><span className={`rounded-full border px-2.5 py-1 text-[10px] ${row.status === "Completed" ? "border-emerald-300/20 text-emerald-200" : row.status === "Cancelled" ? "border-white/10 text-white/40" : "border-amber-300/20 text-amber-200"}`}>{row.status}</span></div>{row.status === "Pending" && <div className="mt-3 flex flex-wrap gap-4">{row.paidByUserId === userId && <><button type="button" disabled={busy} onClick={() => openEdit(row)} className="text-[11px] text-[#91cbb7] disabled:opacity-40">Edit pending</button><button type="button" disabled={busy} onClick={() => void setStatus(row, "Cancelled")} className="text-[11px] text-[#f0b4a3] disabled:opacity-40">Cancel</button></>}{row.receivedByUserId === userId && <><button type="button" disabled={busy} onClick={() => void setStatus(row, "Completed")} className="text-[11px] text-[#91cbb7] disabled:opacity-40">Confirm received</button><button type="button" disabled={busy} onClick={() => void setStatus(row, "Cancelled")} className="text-[11px] text-[#f0b4a3] disabled:opacity-40">Cancel</button></>}</div>}</li>)}</ul>}</section>
-      <p className="mt-5 text-[11px] text-white/35">Payments are recorded manually. Completing a record confirms receipt; no payment gateway or transfer verification is connected.</p></div>
-      {formOpen && <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4 backdrop-blur-sm"><form onSubmit={save} className={`${panel} w-full max-w-lg`}><div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[10px] tracking-[0.18em] text-[#91cbb7]">{editing ? "PENDING REPAYMENT" : "NEW REPAYMENT"}</p><h2 className="mt-2 font-serif text-2xl">{editing ? "Edit repayment" : "Record a repayment"}</h2></div><button type="button" onClick={() => setFormOpen(false)} className="text-xs text-white/50">Close</button></div><p className="mt-2 text-xs text-white/40">This creates a pending record. It does not initiate or verify a transfer.</p><div className="mt-5 grid gap-3"><label className="text-xs text-white/60">Payer<select required disabled className={field} value={payer} onChange={event => setPayer(event.target.value)}><option value="">Choose member</option>{activeMembers.map(member => <option key={member.userId} value={member.userId}>{member.fullName}{member.userId === userId ? " (you)" : ""}</option>)}</select></label><label className="text-xs text-white/60">Receiver<select required className={field} value={receiver} onChange={event => setReceiver(event.target.value)}><option value="">Choose member</option>{activeMembers.filter(member => member.userId !== payer).map(member => <option key={member.userId} value={member.userId}>{member.fullName}</option>)}</select></label><label className="text-xs text-white/60">Amount ({trip?.currencyCode ?? "INR"})<input required type="number" min="0.01" step="0.01" className={field} value={amount} onChange={event => setAmount(event.target.value)} /></label><label className="text-xs text-white/60">Notes (optional)<input maxLength={500} className={field} value={notes} onChange={event => setNotes(event.target.value)} /></label></div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setFormOpen(false)} className="rounded-full border border-white/15 px-4 py-2.5 text-xs">Cancel</button><button disabled={busy || !payer || !receiver || payer === receiver || Number(amount) <= 0} className="rounded-full bg-[#91cbb7] px-5 py-2.5 text-xs font-semibold text-[#10201b] disabled:opacity-40">{busy ? "Saving…" : editing ? "Save changes" : "Record pending repayment"}</button></div></form></div>}
-  </main>;
+
+  // Open Create Form pre-filled from You Pay card
+  function handlePayCard(receiverId: string, remainingAmount: number) {
+    setEditingSettlement(null);
+    setPrefilledData({
+      paidByUserId: userId,
+      receivedByUserId: receiverId,
+      amount: Math.round(remainingAmount),
+    });
+    setFormError("");
+    setFormOpen(true);
+  }
+
+  // Open Edit Form
+  function handleOpenEdit(settlement: Settlement) {
+    setEditingSettlement(settlement);
+    setPrefilledData({
+      settlementId: settlement.settlementId,
+      paidByUserId: settlement.paidByUserId,
+      receivedByUserId: settlement.receivedByUserId,
+      amount: Math.round(settlement.amount),
+      notes: settlement.notes || "",
+    });
+    setFormError("");
+    setFormOpen(true);
+  }
+
+  // Submit Create or Edit Form
+  async function handleFormSubmit(payload: {
+    paidByUserId: string;
+    receivedByUserId: string;
+    amount: number;
+    notes?: string;
+  }) {
+    setBusy(true);
+    setFormError("");
+    setNotice("");
+    const sanitizedAmount = Math.round(payload.amount);
+    try {
+      if (editingSettlement) {
+        await expensesApi.editSettlement(
+          tripId,
+          editingSettlement.settlementId,
+          { ...payload, amount: sanitizedAmount },
+        );
+        setNotice("Pending repayment updated successfully.");
+      } else {
+        await expensesApi.createSettlement(tripId, { ...payload, amount: sanitizedAmount });
+        setNotice(
+          "Repayment recorded as Pending. The recipient must confirm receipt once transfer is completed.",
+        );
+      }
+      setFormOpen(false);
+      await refreshData();
+    } catch (cause) {
+      setFormError(
+        apiErrorMessage(cause, "The repayment could not be saved."),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Update Status (Complete or Cancel)
+  async function handleStatusChange(
+    settlement: Settlement,
+    newStatus: "Completed" | "Cancelled",
+  ) {
+    if (busy) return;
+    if (
+      newStatus === "Completed" &&
+      !window.confirm(
+        `Confirm that you have received ${money(
+          settlement.amount,
+          currency,
+        )} from ${settlement.paidByName}?`,
+      )
+    ) {
+      return;
+    }
+    if (
+      newStatus === "Cancelled" &&
+      !window.confirm(
+        `Cancel this pending repayment of ${money(
+          settlement.amount,
+          currency,
+        )}?`,
+      )
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await expensesApi.updateSettlement(
+        tripId,
+        settlement.settlementId,
+        newStatus,
+      );
+      setNotice(
+        newStatus === "Completed"
+          ? "Repayment confirmed as Completed. Balances have been updated."
+          : "Repayment has been Cancelled.",
+      );
+      await refreshData();
+    } catch (cause) {
+      setError(
+        apiErrorMessage(cause, "Repayment status could not be updated."),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!validTripId) {
+    return (
+      <main className="min-h-screen bg-[#0b1212] px-5 py-12 text-[#f0eee6]">
+        <div className="mx-auto max-w-4xl">
+          <Link href="/home" className="text-xs text-[#91cbb7]">
+            ← Back to trips
+          </Link>
+          <div className={`${panel} mt-6`}>
+            <h1 className="font-serif text-2xl">Invalid trip</h1>
+            <p className="mt-2 text-sm text-[#f0b4a3]">
+              This trip identifier is invalid.
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const filteredBalances = dashboard.filter(
+    (item) => item.settlementType === activeTab,
+  );
+
+  return (
+    <main className="min-h-screen bg-[#0b1212] text-[#f0eee6]">
+      {/* Top Navigation */}
+      <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-[#0d1716]/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
+          <Link
+            href="/home"
+            className="text-sm font-bold uppercase tracking-[0.2em] text-white"
+          >
+            Paisa<span className="text-[#91cbb7]">Matters</span>
+          </Link>
+          <Link
+            href={tripRoutes.details(tripId)}
+            className="text-xs text-white/55 transition hover:text-white"
+          >
+            ← Back to trip room
+          </Link>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-6xl px-5 pb-16 pt-8 sm:px-8 sm:pt-12">
+        {/* Header Hero */}
+        <section className="relative overflow-hidden rounded-[28px] border border-[#91cbb7]/15 bg-gradient-to-br from-[#142822] via-[#192725] to-[#111c1a] p-7 sm:p-10">
+          <div className="pointer-events-none absolute -right-16 -top-32 size-96 rounded-full bg-[#91cbb7]/[0.07] blur-3xl" />
+          <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="font-mono text-[10px] tracking-[0.26em] text-[#91cbb7]">
+                {trip?.tripName ?? "TRIP"} · {currency}
+              </p>
+              <h1 className="mt-3 font-serif text-3xl leading-tight sm:text-5xl">
+                Settlement Overview
+              </h1>
+              <p className="mt-2 text-xs leading-relaxed text-white/50 sm:text-sm">
+                Pairwise balances and verified repayment history calculated from trip expenses.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleOpenCreate}
+              className="shrink-0 rounded-full bg-[#91cbb7] px-5 py-3 text-xs font-semibold text-[#10201b] transition hover:bg-[#b8dfd0]"
+            >
+              + Record repayment
+            </button>
+          </div>
+        </section>
+
+        {/* Global Notifications */}
+        {notice && (
+          <div
+            role="status"
+            className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-[#91cbb7]/25 bg-[#91cbb7]/[0.08] p-4 text-xs text-[#b8dfd0]"
+          >
+            <span>{notice}</span>
+            <button
+              type="button"
+              onClick={() => setNotice("")}
+              className="text-white/40 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {error && (
+          <div
+            role="alert"
+            className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-[#df947f]/30 bg-[#df947f]/[0.08] p-4 text-xs text-[#f0b4a3]"
+          >
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={() => void refreshData()}
+              className="underline hover:text-white"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* ── 1. Balances Section (You Pay / You Receive) ──────────── */}
+        <section className={`${panel} mt-7`}>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-serif text-2xl">Your Net Balances</h2>
+              <p className="mt-1 text-xs text-white/40">
+                Calculated by offsetting your shared expense obligations with completed repayments.
+              </p>
+            </div>
+
+            {/* Tab Switcher */}
+            <div className="flex rounded-full border border-white/10 bg-black/20 p-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("You Pay")}
+                className={`rounded-full px-5 py-2 text-xs font-medium transition ${
+                  activeTab === "You Pay"
+                    ? "bg-[#91cbb7] text-[#10201b]"
+                    : "text-white/60 hover:text-white"
+                }`}
+              >
+                You Pay (Debtor)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("You Receive")}
+                className={`rounded-full px-5 py-2 text-xs font-medium transition ${
+                  activeTab === "You Receive"
+                    ? "bg-[#91cbb7] text-[#10201b]"
+                    : "text-white/60 hover:text-white"
+                }`}
+              >
+                You Receive (Creditor)
+              </button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="h-44 animate-pulse rounded-2xl bg-white/[0.04]" />
+              <div className="h-44 animate-pulse rounded-2xl bg-white/[0.04]" />
+            </div>
+          ) : filteredBalances.length === 0 ? (
+            <div className="mt-6 rounded-2xl border border-dashed border-white/10 p-8 text-center">
+              <p className="text-sm font-medium text-white/60">
+                {activeTab === "You Pay"
+                  ? "You have no outstanding debts to pay in this trip."
+                  : "No members currently owe you repayments for this trip."}
+              </p>
+              <p className="mt-1 text-xs text-white/35">
+                All pairwise expenses under this tab are balanced or settled.
+              </p>
+            </div>
+          ) : (
+            <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+              {filteredBalances.map((item, index) => (
+                <SettlementCard
+                  key={`${item.debtorId}-${item.creditorId}-${index}`}
+                  item={item}
+                  currency={currency}
+                  onPay={handlePayCard}
+                  onShowPaymentInfo={(name) => setPaymentInfoReceiver(name)}
+                />
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* ── 2. Repayment History Section ────────────────────────── */}
+        <section className={`${panel} mt-7`}>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-serif text-2xl">Repayment History</h2>
+              <p className="mt-1 text-xs text-white/40">
+                Audit trail of transfers recorded between trip members. Only Completed repayments reduce balances.
+              </p>
+            </div>
+
+            {/* Filter Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-white/45">Filter:</span>
+              <div className="flex flex-wrap rounded-xl border border-white/10 bg-black/20 p-1 text-xs">
+                {(
+                  [
+                    ["", "All"],
+                    ["Pending", "Pending"],
+                    ["Completed", "Completed"],
+                    ["Cancelled", "Cancelled"],
+                  ] as const
+                ).map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setFilter(val)}
+                    className={`rounded-lg px-3 py-1.5 transition ${
+                      filter === val
+                        ? "bg-white/15 text-white"
+                        : "text-white/45 hover:text-white"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="mt-6 space-y-3">
+              <div className="h-16 animate-pulse rounded-xl bg-white/[0.04]" />
+              <div className="h-16 animate-pulse rounded-xl bg-white/[0.04]" />
+            </div>
+          ) : history.length === 0 ? (
+            <div className="mt-6 rounded-2xl border border-dashed border-white/10 p-8 text-center">
+              <p className="text-sm font-medium text-white/60">
+                No repayments match the selected filter.
+              </p>
+            </div>
+          ) : (
+            <ul className="mt-6 divide-y divide-white/[0.06]">
+              {history.map((row) => {
+                const isPending = row.status === "Pending";
+                const isPayer = row.paidByUserId === userId;
+                const isReceiver = row.receivedByUserId === userId;
+
+                return (
+                  <li key={row.settlementId} className="py-4 first:pt-0 last:pb-0">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      {/* Left: Info */}
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-medium text-white">
+                            {row.paidByName}
+                          </span>
+                          <span className="text-xs text-white/40">paid</span>
+                          <span className="text-sm font-medium text-white">
+                            {row.receivedByName}
+                          </span>
+                          <span className="font-mono text-sm font-semibold text-[#b8dfd0]">
+                            {money(row.amount, currency)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[11px] text-white/40">
+                          {new Date(row.settlementDate).toLocaleString(undefined, {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}
+                          {row.notes ? ` · Note: “${row.notes}”` : ""}
+                        </p>
+                      </div>
+
+                      {/* Right: Badge */}
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${
+                            row.status === "Completed"
+                              ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300"
+                              : row.status === "Cancelled"
+                              ? "border-white/10 bg-white/[0.03] text-white/40"
+                              : "border-amber-400/25 bg-amber-400/[0.08] text-amber-300"
+                          }`}
+                        >
+                          {row.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Pending Actions */}
+                    {isPending && (
+                      <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-white/[0.04] pt-2.5">
+                        {isPayer && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => handleOpenEdit(row)}
+                              className="text-xs text-[#91cbb7] underline hover:text-[#b8dfd0] disabled:opacity-40"
+                            >
+                              Edit details
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void handleStatusChange(row, "Cancelled")}
+                              className="text-xs text-[#df947f] hover:text-[#f0b4a3] disabled:opacity-40"
+                            >
+                              Cancel repayment
+                            </button>
+                          </>
+                        )}
+                        {isReceiver && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void handleStatusChange(row, "Completed")}
+                              className="rounded-full bg-[#91cbb7] px-3 py-1 text-[11px] font-semibold text-[#10201b] transition hover:bg-[#b8dfd0] disabled:opacity-40"
+                            >
+                              Confirm received ✓
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void handleStatusChange(row, "Cancelled")}
+                              className="text-xs text-[#df947f] hover:text-[#f0b4a3] disabled:opacity-40"
+                            >
+                              Reject / Cancel
+                            </button>
+                          </>
+                        )}
+                        {!isPayer && !isReceiver && (
+                          <span className="text-[11px] text-white/30">
+                            Awaiting confirmation between {row.paidByName} and {row.receivedByName}.
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        {/* Disclaimer / Notice */}
+        <p className="mt-6 text-center text-[11px] leading-relaxed text-white/35">
+          PaisaMatters does not execute bank transfers directly. Settle up using UPI or banking, then record repayments here. Completed settlements automatically reduce outstanding obligations.
+        </p>
+      </div>
+
+      {/* ── Form Modal (Create / Edit) ────────────────────────────── */}
+      <SettlementFormModal
+        isOpen={formOpen}
+        onClose={() => setFormOpen(false)}
+        onSubmit={handleFormSubmit}
+        activeMembers={activeMembers}
+        currentUserId={userId}
+        initialData={prefilledData}
+        currency={currency}
+        busy={busy}
+        serverError={formError}
+      />
+
+      {/* ── Payment Info Modal ────────────────────────────────────── */}
+      {paymentInfoReceiver && (
+        <PaymentInfoModal
+          receiverName={paymentInfoReceiver}
+          onClose={() => setPaymentInfoReceiver(null)}
+          onProceedToRecord={() => {
+            const match = activeMembers.find(
+              (m) => m.fullName === paymentInfoReceiver,
+            );
+            handleOpenCreate();
+            if (match) {
+              setPrefilledData((prev) => ({
+                paidByUserId: userId,
+                receivedByUserId: match.userId,
+                amount: prev?.amount || 0,
+              }));
+            }
+          }}
+        />
+      )}
+    </main>
+  );
 }
