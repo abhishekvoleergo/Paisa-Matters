@@ -14,7 +14,7 @@ public sealed class ExpenseService(IExpenseDataService data, ITripService trips)
         if (requestedShares.Any(s => !memberIds.Contains(s.UserId))) throw new ArgumentException("Every participant must be an active trip member.");
         if (requestedShares.Select(s => s.UserId).Distinct().Count() != requestedShares.Count) throw new ArgumentException("A participant can only be selected once.");
         if (request.SplitType == "Equal" && requestedShares.Any(s => s.ShareAmount is not null)) throw new ArgumentException("Equal split amounts are calculated by the server.");
-        if (request.SplitType != "Equal" && (requestedShares.Any(s => s.ShareAmount is null or <= 0) || requestedShares.Sum(s => s.ShareAmount!.Value) != request.Amount)) throw new ArgumentException("Custom and consumption shares must be positive and add up exactly to the total.");
+        if (request.SplitType != "Equal" && (requestedShares.Any(s => s.ShareAmount is null or <= 0 || decimal.Floor(s.ShareAmount.Value) != s.ShareAmount.Value) || requestedShares.Sum(s => s.ShareAmount!.Value) != request.Amount)) throw new ArgumentException("Custom and consumption shares must be positive whole numbers and add up exactly to the total.");
         return await data.SaveExpenseAsync(tripId, expenseId, request, userId, token);
     }
 
@@ -34,7 +34,8 @@ public sealed class ExpenseService(IExpenseDataService data, ITripService trips)
     {
         var ids = members.Select(m => m.UserId).ToHashSet(); if (payer == receiver) throw new ArgumentException("The sender and receiver must be different members.");
         if (!ids.Contains(payer) || !ids.Contains(receiver)) throw new ArgumentException("Both repayment participants must be active trip members.");
-        if (amount <= 0 || amount > 99999999999999999.99m) throw new ArgumentException("Settlement amount must be greater than zero and within the supported range.");
+        if (amount <= 0 || amount > 99999999999999999m) throw new ArgumentException("Settlement amount must be greater than zero and within the supported range.");
+        if (decimal.Floor(amount) != amount) throw new ArgumentException("Settlement amount must be a whole number.");
         if (notes?.Length > 500) throw new ArgumentException("Notes must be 500 characters or fewer.");
     }
 
@@ -46,6 +47,7 @@ public sealed class ExpenseService(IExpenseDataService data, ITripService trips)
     private static void ValidateExpense(SaveTripExpenseRequest request)
     {
         if (request.Amount <= 0) throw new ArgumentException("Expense amount must be greater than zero.");
+        if (decimal.Floor(request.Amount) != request.Amount) throw new ArgumentException("Expense amount must be a whole number.");
         if (string.IsNullOrWhiteSpace(request.Description) || request.Description.Trim().Length > 200) throw new ArgumentException("Description is required and must be 200 characters or fewer.");
         if (string.IsNullOrWhiteSpace(request.Category) || request.Category.Trim().Length > 50) throw new ArgumentException("Category is required and must be 50 characters or fewer.");
         if (request.SplitType is not ("Equal" or "Custom" or "Consumption")) throw new ArgumentException("Split type must be Equal, Custom, or Consumption.");

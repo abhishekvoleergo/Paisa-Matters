@@ -5,7 +5,7 @@ namespace PaisaMatters.DomainModel;
 public sealed class SaveTripExpenseRequest
 {
     [Required, StringLength(200, MinimumLength = 1)] public string? Description { get; init; }
-    [Range(typeof(decimal), "0.01", "99999999999999999.99")] public decimal Amount { get; init; }
+    [Range(typeof(decimal), "1", "99999999999999999")] public decimal Amount { get; init; }
     [Required, StringLength(50)] public string? Category { get; init; }
     public Guid PaidByUserId { get; init; }
     [Required] public string? SplitType { get; init; }
@@ -25,14 +25,14 @@ public sealed class CreateTripSettlementRequest
 {
     public Guid PaidByUserId { get; init; }
     public Guid ReceivedByUserId { get; init; }
-    [Range(typeof(decimal), "0.01", "99999999999999999.99")] public decimal Amount { get; init; }
+    [Range(typeof(decimal), "1", "99999999999999999")] public decimal Amount { get; init; }
     [StringLength(500)] public string? Notes { get; init; }
 }
 public sealed class UpdateTripSettlementRequest
 {
     public Guid PaidByUserId { get; init; }
     public Guid ReceivedByUserId { get; init; }
-    [Range(typeof(decimal), "0.01", "99999999999999999.99")] public decimal Amount { get; init; }
+    [Range(typeof(decimal), "1", "99999999999999999")] public decimal Amount { get; init; }
     [StringLength(500)] public string? Notes { get; init; }
 }
 public sealed record MyTripSettlementResponse(Guid DebtorId, string DebtorName, Guid CreditorId, string CreditorName, string SettlementType, decimal OriginalAmount, decimal CompletedAmount, decimal PendingAmount, decimal RemainingAmount, decimal ProgressPercent);
