@@ -63,16 +63,18 @@ export default function AuthPage() {
     const data = new FormData(event.currentTarget);
     const fullName = String(data.get("full-name") || "").trim();
     const email = String(data.get("signup-email") || "").trim().toLowerCase();
+    const upiId = String(data.get("signup-upi") || "").trim() || undefined;
     const password = String(data.get("signup-password") || "");
     const confirm = String(data.get("confirm-password") || "");
     if (!fullName || !email || !password || !confirm) { setError("Complete all fields to create your account."); return; }
     if (fullName.length > 150) { setError("Your name must be 150 characters or fewer."); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Enter a valid email address."); return; }
+    if (upiId && (!/^[a-zA-Z0-9.\-_]{2,}@[a-zA-Z0-9.\-]+$/.test(upiId) || upiId.length > 100)) { setError("Enter a valid UPI ID (e.g. yourname@upi)."); return; }
     if (password.length < 10 || password.length > 128 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) { setError("Use 10–128 characters with at least one letter and one number."); return; }
     if (password !== confirm) { setError("The passwords don’t match."); return; }
     setBusy(true);
     try {
-      await apiRequest("auth/register", { method: "POST", body: JSON.stringify({ fullName, email, password }) });
+      await apiRequest("auth/register", { method: "POST", body: JSON.stringify({ fullName, email, password, upiId }) });
       router.replace(postAuthPath());
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Account creation failed. Please try again."); }
     finally { setBusy(false); }
@@ -127,6 +129,11 @@ export default function AuthPage() {
                   <form className="mt-6 space-y-3.5" onSubmit={signup} noValidate>
                     <div><label className={labelClass} htmlFor="full-name">Full name</label><input className={inputClass} id="full-name" name="full-name" autoComplete="name" maxLength={150} required placeholder="Your name" /></div>
                     <div><label className={labelClass} htmlFor="signup-email">Email</label><input className={inputClass} id="signup-email" name="signup-email" type="email" autoComplete="email" maxLength={256} required placeholder="you@example.com" /></div>
+                    <div>
+                      <label className={labelClass} htmlFor="signup-upi">UPI ID (optional)</label>
+                      <input className={inputClass} id="signup-upi" name="signup-upi" maxLength={100} placeholder="yourname@upi" />
+                      <p className="mt-1 text-[10px] text-white/35">Used for expense settlements. Can also be added later in profile settings.</p>
+                    </div>
                     <div><label className={labelClass} htmlFor="signup-password">Password</label><div className="relative"><input className={`${inputClass} pr-16`} id="signup-password" name="signup-password" type={showSignupPassword ? "text" : "password"} autoComplete="new-password" required placeholder="10+ characters" /><button type="button" className="absolute inset-y-0 right-3 text-xs text-white/45 hover:text-white" onClick={() => setShowSignupPassword(!showSignupPassword)} aria-label={showSignupPassword ? "Hide password" : "Show password"}>{showSignupPassword ? "Hide" : "Show"}</button></div><p className="mt-1 text-[10px] text-white/35">At least 10 characters, including a letter and a number.</p></div>
                     <div><label className={labelClass} htmlFor="confirm-password">Confirm password</label><div className="relative"><input className={`${inputClass} pr-16`} id="confirm-password" name="confirm-password" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" required placeholder="Repeat your password" /><button type="button" className="absolute inset-y-0 right-3 text-xs text-white/45 hover:text-white" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label={showConfirmPassword ? "Hide confirmation" : "Show confirmation"}>{showConfirmPassword ? "Hide" : "Show"}</button></div></div>
                     {error && <p role="alert" className="rounded-lg border border-[#df947f]/30 bg-[#df947f]/[0.08] px-3 py-2 text-xs text-[#f0b4a3]">{error}</p>}

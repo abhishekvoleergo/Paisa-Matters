@@ -1,7 +1,14 @@
 import { AxiosRequestConfig, isAxiosError } from "axios";
 import { apiClient, apiErrorMessage } from "@/lib/api/client";
 
-export type UserProfile = { userId: string; fullName: string; email: string; roles: string[] };
+export type UserProfile = {
+  userId: string;
+  fullName: string;
+  email: string;
+  roles: string[];
+  upiId?: string | null;
+};
+
 type ApiError = Error & { status?: number };
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -25,4 +32,19 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 export async function getCurrentUser(): Promise<UserProfile> {
   const result = await apiRequest<{ user: UserProfile }>("auth/me");
   return result.user;
+}
+
+export async function updateProfile(data: { fullName: string; upiId?: string | null }): Promise<UserProfile> {
+  const result = await apiRequest<{ user: UserProfile; message?: string }>("auth/profile", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  return result.user;
+}
+
+export async function changePassword(data: { currentPassword: string; newPassword: string; confirmPassword?: string }): Promise<void> {
+  await apiRequest<{ message?: string }>("auth/change-password", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }

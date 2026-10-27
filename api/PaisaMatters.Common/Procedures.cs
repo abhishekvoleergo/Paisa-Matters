@@ -3,6 +3,7 @@ namespace PaisaMatters.Common;
 public static class Procedures
 {
     public const string CreateLoginAccount = "dbo.usp_CreateLoginAccount";
+    public const string UpdateUserProfile = "dbo.usp_UpdateUserProfile";
     public const string CreateTrip = "dbo.usp_CreateTrip";
     public const string GetTripsByUser = "dbo.usp_GetTripsByUser";
     public const string CreateTripInvite = "dbo.usp_CreateTripInvite";
