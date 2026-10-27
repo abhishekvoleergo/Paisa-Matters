@@ -95,21 +95,21 @@ export default function AuthPage() {
           <Link href="/" className="text-xs text-white/50 transition hover:text-white">Back to home</Link>
         </header>
         <div className="grid flex-1 items-center gap-12 py-12 lg:grid-cols-[1fr_0.92fr] lg:gap-20">
-          <section className="order-2 mx-auto max-w-lg lg:order-1 lg:mx-0">
+          <section className="order-1 mx-auto max-w-lg lg:order-1 lg:mx-0">
             <p className="mb-5 font-mono text-[10px] tracking-[0.3em] text-[#91cbb7]">TRAVEL TOGETHER · SETTLE FAIRLY</p>
-            <h1 className="font-serif text-4xl leading-tight tracking-tight sm:text-5xl">Good trips begin<br /><em className="text-[#91cbb7]">with a clear plan.</em></h1>
-            <p className="mt-6 max-w-md text-sm leading-7 text-white/55">Keep the group in sync, split costs fairly, and spend more of the journey making memories.</p>
+            <h1 className="font-serif text-4xl leading-tight tracking-tight sm:text-5xl">{mode === "signup" ? <>Make every shared expense <em className="text-[#91cbb7]">simpler.</em></> : <>Good trips begin<br /><em className="text-[#91cbb7]">with a clear plan.</em></>}</h1>
+            <p className="mt-6 max-w-md text-sm leading-7 text-white/65">Keep everyone in sync, share costs fairly, and spend more of the journey making memories.</p>
             <div className="mt-10 hidden grid-cols-3 gap-3 sm:grid">
               {["Shared plans", "Fair splits", "Clear balances"].map((item, index) => <div key={item} className="border-t border-[#91cbb7]/35 pt-3"><span className="font-mono text-[10px] text-[#91cbb7]/70">0{index + 1}</span><p className="mt-2 text-xs text-white/65">{item}</p></div>)}
             </div>
           </section>
 
-          <section className="order-1 mx-auto w-full max-w-[440px] lg:order-2" aria-label="Account access">
+          <section className="order-2 mx-auto w-full max-w-[440px] lg:order-2" aria-label="Account access">
             <div className="auth-card-perspective">
               <div className={`auth-card ${mode === "signup" ? "is-flipped" : ""}`}>
                 <article aria-hidden={mode !== "login"} inert={mode !== "login"} className="auth-face rounded-[26px] border border-white/10 bg-[#15211f]/95 p-6 shadow-[0_30px_100px_rgba(0,0,0,.6)] sm:p-9">
                   <p className="font-mono text-[10px] tracking-[0.25em] text-[#91cbb7]">WELCOME BACK</p>
-                  <h2 className="mt-3 font-serif text-3xl">Log in</h2>
+                  <h2 className="mt-3 font-serif text-3xl">Welcome back</h2>
                   <p className="mt-2 text-xs text-white/45">Pick up where your next journey starts.</p>
                   <form className="mt-7 space-y-4" onSubmit={login} noValidate>
                     <div><label className={labelClass} htmlFor="login-email">Email</label><input className={inputClass} id="login-email" name="login-email" type="email" autoComplete="email" maxLength={256} required placeholder="you@example.com" /></div>
@@ -117,12 +117,12 @@ export default function AuthPage() {
                     {error && <p role="alert" className="rounded-lg border border-[#df947f]/30 bg-[#df947f]/[0.08] px-3 py-2 text-xs text-[#f0b4a3]">{error}</p>}
                     <button disabled={busy || inactive} className="w-full rounded-full bg-[#91cbb7] px-5 py-3.5 text-sm font-semibold text-[#10201b] transition hover:bg-[#b8dfd0] disabled:cursor-wait disabled:opacity-60">{busy ? "Signing in…" : "Login"}</button>
                   </form>
-                  <p className="mt-5 text-center text-xs text-white/45">New to PaisaMatters? <button type="button" onClick={() => changeMode("signup")} className="font-semibold text-[#a7d3c2] hover:text-white">Create your account</button></p>
+                  <p className="mt-5 text-center text-xs text-white/55">New to PaisaMatters? <Link href="/auth?mode=signup" onClick={(event) => { event.preventDefault(); changeMode("signup"); }} className="font-semibold text-[#a7d3c2] underline decoration-[#a7d3c2]/35 underline-offset-4 hover:text-white">Create your account</Link></p>
                   {accessSwitch}
                 </article>
                 <article aria-hidden={mode !== "signup"} inert={mode !== "signup"} className="auth-face auth-face-back rounded-[26px] border border-white/10 bg-[#15211f]/95 p-6 shadow-[0_30px_100px_rgba(0,0,0,.6)] sm:p-9">
                   <p className="font-mono text-[10px] tracking-[0.25em] text-[#91cbb7]">YOUR NEXT CHAPTER</p>
-                  <h2 className="mt-3 font-serif text-3xl">Create account</h2>
+                  <h2 className="mt-3 font-serif text-3xl">Create your account</h2>
                   <p className="mt-2 text-xs text-white/45">A few details, then you’re ready to go.</p>
                   <form className="mt-6 space-y-3.5" onSubmit={signup} noValidate>
                     <div><label className={labelClass} htmlFor="full-name">Full name</label><input className={inputClass} id="full-name" name="full-name" autoComplete="name" maxLength={150} required placeholder="Your name" /></div>
@@ -132,7 +132,7 @@ export default function AuthPage() {
                     {error && <p role="alert" className="rounded-lg border border-[#df947f]/30 bg-[#df947f]/[0.08] px-3 py-2 text-xs text-[#f0b4a3]">{error}</p>}
                     <button disabled={busy || inactive} className="w-full rounded-full bg-[#91cbb7] px-5 py-3.5 text-sm font-semibold text-[#10201b] transition hover:bg-[#b8dfd0] disabled:cursor-wait disabled:opacity-60">{busy ? "Creating account…" : "Sign up"}</button>
                   </form>
-                  <p className="mt-4 text-center text-xs text-white/45">Already have an account? <button type="button" onClick={() => changeMode("login")} className="font-semibold text-[#a7d3c2] hover:text-white">Log in</button></p>
+                  <p className="mt-4 text-center text-xs text-white/55">Already have an account? <Link href="/auth?mode=login" onClick={(event) => { event.preventDefault(); changeMode("login"); }} className="font-semibold text-[#a7d3c2] underline decoration-[#a7d3c2]/35 underline-offset-4 hover:text-white">Log in</Link></p>
                   {accessSwitch}
                   <p className="mt-2 text-center text-[10px] text-white/35">Public registration creates a standard User account.</p>
                 </article>

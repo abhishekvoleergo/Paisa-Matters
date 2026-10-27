@@ -415,6 +415,33 @@ footer > div { background:radial-gradient(ellipse at 85% 2%,color-mix(in srgb,va
   .reveal.is-visible h2 { animation:none!important; }
 }
 
+/* Compact navbar that stays available as its surface softens while scrolling. */
+#navbar { position:fixed!important; inset:14px 3.2% auto!important; width:93.6%; z-index:90!important; padding:0 12px; border:1px solid rgba(155,223,225,.3)!important; border-radius:999px; background:linear-gradient(110deg,rgba(53,47,78,var(--nav-bg-alpha,.94)),rgba(32,65,78,var(--nav-bg-alpha,.94)))!important; box-shadow:0 8px 30px rgba(8,12,24,.24); opacity:var(--nav-opacity,1); backdrop-filter:blur(var(--nav-blur,14px)); -webkit-backdrop-filter:blur(var(--nav-blur,14px)); transition:opacity 120ms linear,background 120ms linear,backdrop-filter 120ms linear; }
+#navbar > div { max-width:none!important; padding:0 12px!important; }
+#navbar > div > div { height:52px!important; }
+#navbar .text-lg { font-size:12px!important; letter-spacing:.12em!important; }
+#navbar .hidden.lg\:flex { gap:clamp(15px,2.3vw,34px)!important; }
+#navbar .hidden.lg\:flex a { font-size:12px!important; }
+#navbar #nav-signup { padding:8px 17px!important; background:var(--brand-cyan)!important; color:#11141a!important; }
+#navbar a:focus-visible,#navbar button:focus-visible { outline:2px solid var(--brand-lavender); outline-offset:4px; }
+@media(max-width:800px) {
+  #navbar { inset:10px 3% auto!important; width:94%; padding:0 7px; }
+  #navbar > div { padding:0 5px!important; }
+  #navbar > div > div { height:48px!important; }
+  #navbar .hidden.lg\:flex { gap:10px!important; }
+  #mobile-navigation { overflow-y:auto; }
+}
+@media(prefers-reduced-motion:reduce) { #navbar { transition:none!important; } }
+
+/* Full-width footer surface with aligned content and working links only. */
+.site-footer { border-top:1px solid rgba(244,240,232,.1); }
+.site-footer-inner { background:transparent!important; border:0!important; border-radius:0!important; box-shadow:none!important; }
+.site-footer-inner::before { display:none!important; }
+.footer-link { color:rgba(244,240,232,.68); font-size:14px; transition:color 180ms ease; }
+.footer-link:hover,.footer-link:focus-visible { color:var(--brand-cyan); }
+.footer-link:focus-visible { outline:2px solid var(--brand-lavender); outline-offset:4px; border-radius:2px; }
+@media(prefers-reduced-motion:reduce) { .footer-link { transition:none; } }
+
 
 
 

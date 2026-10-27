@@ -4,23 +4,39 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 const NAV_LINKS = [
-  { label: "How it works", href: "https://youtu.be/thXUz7isjfc?si=PksxUcOnV9_cPiYf", external: true },
+  { label: "How it works", href: "#how-it-works" },
   { label: "For Trips", href: "#for-trips" },
   { label: "Features", href: "#features" },
   { label: "Pricing", href: "#pricing" },
 ];
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 80);
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let frame = 0;
+    const updateScrollAppearance = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        const progress = reduceMotion.matches ? 0 : Math.min(1, Math.max(0, window.scrollY / 520));
+        const nav = navRef.current;
+        nav?.style.setProperty("--nav-scroll-progress", String(progress));
+        nav?.style.setProperty("--nav-opacity", String(1 - progress * 0.16));
+        nav?.style.setProperty("--nav-bg-alpha", String(0.94 - progress * 0.42));
+        nav?.style.setProperty("--nav-blur", `${14 - progress * 4}px`);
+      });
     };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    updateScrollAppearance();
+    window.addEventListener("scroll", updateScrollAppearance, { passive: true });
+    reduceMotion.addEventListener("change", updateScrollAppearance);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", updateScrollAppearance);
+      reduceMotion.removeEventListener("change", updateScrollAppearance);
+    };
   }, []);
 
   useEffect(() => {
@@ -35,14 +51,10 @@ export default function Navbar() {
     <nav
       ref={navRef}
       id="navbar"
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        scrolled
-          ? "bg-[#0b1212]/80 backdrop-blur-xl border-b border-white/[0.06]"
-          : "bg-transparent"
-      }`}
+      className="fixed top-0 left-0 right-0 z-50"
     >
       <div className="mx-auto w-full max-w-[1400px] px-6 md:px-10 lg:px-12">
-        <div className="flex h-16 items-center justify-between lg:h-20">
+        <div className="flex h-14 items-center justify-between lg:h-14">
           {/* Logo */}
           <Link
             href="/"
@@ -63,8 +75,6 @@ export default function Navbar() {
               <a
                 key={link.href}
                 href={link.href}
-                target={link.external ? "_blank" : undefined}
-                rel={link.external ? "noopener noreferrer" : undefined}
                 id={`nav-${link.href.replace("#", "")}`}
                 className="text-sm font-medium text-white/60 hover:text-white transition-colors duration-300"
               >
@@ -134,8 +144,6 @@ export default function Navbar() {
             <a
               key={link.href}
               href={link.href}
-              target={link.external ? "_blank" : undefined}
-              rel={link.external ? "noopener noreferrer" : undefined}
               onClick={() => setMobileOpen(false)}
               className="px-4 py-3 text-sm font-medium text-white/60 hover:text-white transition-colors duration-300 rounded-lg hover:bg-white/[0.04]"
             >
