@@ -14,7 +14,7 @@ type SettlementCardProps = {
   item: SettlementDashboardItem;
   currency: string;
   onPay?: (receiverId: string, remainingAmount: number) => void;
-  onShowPaymentInfo?: (receiverName: string) => void;
+  onShowPaymentInfo?: (receiverId: string) => void;
 };
 
 export default function SettlementCard({
@@ -113,10 +113,10 @@ export default function SettlementCard({
           {onShowPaymentInfo && (
             <button
               type="button"
-              onClick={() => onShowPaymentInfo(otherPersonName)}
+              onClick={() => onShowPaymentInfo(item.creditorId)}
               className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] text-white/70 transition hover:border-[#91cbb7]/40 hover:text-white"
             >
-              Payment details / QR
+              Pay with UPI QR
             </button>
           )}
           {onPay && (

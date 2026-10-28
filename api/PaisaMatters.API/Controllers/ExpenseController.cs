@@ -37,6 +37,9 @@ public sealed class ExpenseController(IExpenseService expenses, ILogger<ExpenseC
     [HttpGet("settlements/dashboard")]
     public Task<IActionResult> SettlementDashboard(Guid tripId) => Run(async user => Ok(await expenses.GetMySettlementsAsync(tripId, user, HttpContext.RequestAborted)), "Settlement dashboard failed for {TripId}", tripId);
 
+    [HttpGet("settlements/payment-qr-details")]
+    public Task<IActionResult> PaymentQrDetails(Guid tripId, [FromQuery] Guid recipientId) => Run(async user => Ok(await expenses.GetPaymentQrDetailsAsync(tripId, recipientId, user, HttpContext.RequestAborted)), "Settlement payment details failed for {TripId}", tripId);
+
     [HttpGet("settlements/history")]
     public Task<IActionResult> SettlementHistory(Guid tripId, [FromQuery] string? status) => Run(async user => Ok(await expenses.GetSettlementHistoryAsync(tripId, user, status, HttpContext.RequestAborted)), "Settlement history failed for {TripId}", tripId);
 
@@ -55,7 +58,7 @@ public sealed class ExpenseController(IExpenseService expenses, ILogger<ExpenseC
         try { return await action(userId); }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
         catch (UnauthorizedAccessException) { return Forbid(); }
-        catch (KeyNotFoundException) { return NotFound(new { message = "The pending repayment could not be found." }); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = string.IsNullOrWhiteSpace(ex.Message) ? "The pending repayment could not be found." : ex.Message }); }
         catch (SqlException ex) when (ex.Number is >= 50001 and <= 50007 or 50013 or 50030 or 50031 or 50040) { return BadRequest(new { message = "The expense or repayment details are invalid." }); }
         catch (SqlException ex) when (ex.Number is 51003 or 50008 or 50009 or 50010 or 50011 or 50012 or 50020 or 50032 or 50033 or 50034 or 50041) { return NotFound(new { message = "The trip, expense, or settlement could not be found or accessed." }); }
         catch (SqlException ex) { logger.LogError(ex, logMessage, tripId); return Problem("The request could not be completed. Please try again.", statusCode: 503); }

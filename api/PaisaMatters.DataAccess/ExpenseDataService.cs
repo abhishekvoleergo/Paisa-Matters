@@ -74,11 +74,46 @@ public sealed class ExpenseDataService(string connectionString) : IExpenseDataSe
 
     public async Task<SettlementSaveResult> CreateSettlementAsync(Guid tripId, CreateTripSettlementRequest request, Guid userId, CancellationToken token)
     {
-        await using var connection = await OpenAsync(token); await using var command = Procedure(connection, Procedures.CreateTripSettlement);
-        AddGuid(command, "@TripId", tripId); AddGuid(command, "@PaidByUserId", request.PaidByUserId); AddGuid(command, "@ReceivedByUserId", request.ReceivedByUserId); AddDecimal(command, "@Amount", request.Amount); AddGuid(command, "@CreatedBy", userId);
-        command.Parameters.Add("@Notes", SqlDbType.NVarChar, 500).Value = string.IsNullOrWhiteSpace(request.Notes) ? DBNull.Value : request.Notes.Trim();
-        await using var reader = await command.ExecuteReaderAsync(token); if (!await reader.ReadAsync(token)) throw new InvalidOperationException("Settlement procedure did not return a result.");
-        return new(reader.GetGuid(reader.GetOrdinal("SettlementId")), reader.GetString(reader.GetOrdinal("Status")));
+        await using var connection = await OpenAsync(token);
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.Serializable, token);
+
+        var existingRequest = await FindSettlementRequestAsync(connection, transaction, request.SettlementId!.Value, token);
+        if (existingRequest is not null)
+        {
+            if (existingRequest.TripId == tripId && existingRequest.PaidByUserId == request.PaidByUserId &&
+                existingRequest.ReceivedByUserId == request.ReceivedByUserId && existingRequest.Amount == request.Amount &&
+                existingRequest.CreatedBy == userId && existingRequest.Status == "Pending")
+            {
+                await transaction.CommitAsync(token);
+                return new(request.SettlementId.Value, "Pending");
+            }
+
+            throw new ArgumentException("This repayment request identifier has already been used.");
+        }
+
+        // Recheck the authoritative pair balance while holding serializable locks so concurrent
+        // requests cannot both record more than the current outstanding amount.
+        var balances = await ReadMySettlementsAsync(connection, transaction, tripId, userId, token);
+        var pair = balances.FirstOrDefault(item => item.DebtorId == userId && item.CreditorId == request.ReceivedByUserId);
+        if (pair is null || pair.RemainingAmount <= 0)
+            throw new ArgumentException("There is no outstanding amount to this recipient. Refresh the settlement overview and try again.");
+        if (request.Amount > pair.RemainingAmount)
+            throw new ArgumentException("The repayment amount exceeds the current outstanding balance. Refresh the settlement overview and try again.");
+
+        SettlementSaveResult result;
+        await using (var command = Procedure(connection, Procedures.CreateTripSettlement))
+        {
+            command.Transaction = transaction;
+            AddGuid(command, "@TripId", tripId); AddGuid(command, "@PaidByUserId", request.PaidByUserId); AddGuid(command, "@ReceivedByUserId", request.ReceivedByUserId); AddDecimal(command, "@Amount", request.Amount); AddGuid(command, "@CreatedBy", userId);
+            command.Parameters.Add("@Notes", SqlDbType.NVarChar, 500).Value = string.IsNullOrWhiteSpace(request.Notes) ? DBNull.Value : request.Notes.Trim();
+            command.Parameters.Add("@SettlementId", SqlDbType.UniqueIdentifier).Value = request.SettlementId.Value;
+            await using var reader = await command.ExecuteReaderAsync(token);
+            if (!await reader.ReadAsync(token)) throw new InvalidOperationException("Settlement procedure did not return a result.");
+            result = new(reader.GetGuid(reader.GetOrdinal("SettlementId")), reader.GetString(reader.GetOrdinal("Status")));
+        }
+
+        await transaction.CommitAsync(token);
+        return result;
     }
 
     public async Task<SettlementSaveResult> UpdateSettlementAsync(Guid tripId, Guid settlementId, UpdateTripSettlementRequest request, CancellationToken token)
@@ -91,10 +126,8 @@ public sealed class ExpenseDataService(string connectionString) : IExpenseDataSe
 
     public async Task<IReadOnlyList<MyTripSettlementResponse>> GetMySettlementsAsync(Guid tripId, Guid userId, CancellationToken token)
     {
-        await using var connection = await OpenAsync(token); await using var command = Procedure(connection, Procedures.GetMyTripSettlements); AddGuid(command, "@TripId", tripId); AddGuid(command, "@UserId", userId);
-        await using var reader = await command.ExecuteReaderAsync(token); var result = new List<MyTripSettlementResponse>();
-        while (await reader.ReadAsync(token)) result.Add(new(reader.GetGuid(reader.GetOrdinal("DebtorId")), reader.GetString(reader.GetOrdinal("DebtorName")), reader.GetGuid(reader.GetOrdinal("CreditorId")), reader.GetString(reader.GetOrdinal("CreditorName")), reader.GetString(reader.GetOrdinal("SettlementType")), reader.GetDecimal(reader.GetOrdinal("OriginalAmount")), reader.GetDecimal(reader.GetOrdinal("CompletedAmount")), reader.GetDecimal(reader.GetOrdinal("PendingAmount")), reader.GetDecimal(reader.GetOrdinal("RemainingAmount")), Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("ProgressPercent")))));
-        return result;
+        await using var connection = await OpenAsync(token);
+        return await ReadMySettlementsAsync(connection, null, tripId, userId, token);
     }
 
     public async Task<IReadOnlyList<TripSettlementResponse>> GetSettlementHistoryAsync(Guid tripId, Guid userId, string? status, CancellationToken token)
@@ -120,6 +153,25 @@ public sealed class ExpenseDataService(string connectionString) : IExpenseDataSe
 
     private async Task<SqlConnection> OpenAsync(CancellationToken token) { var connection = new SqlConnection(_connectionString); await connection.OpenAsync(token); return connection; }
     private static SqlCommand Procedure(SqlConnection connection, string name) => new(name, connection) { CommandType = CommandType.StoredProcedure };
+    private static async Task<IReadOnlyList<MyTripSettlementResponse>> ReadMySettlementsAsync(SqlConnection connection, SqlTransaction? transaction, Guid tripId, Guid userId, CancellationToken token)
+    {
+        await using var command = Procedure(connection, Procedures.GetMyTripSettlements);
+        command.Transaction = transaction;
+        AddGuid(command, "@TripId", tripId); AddGuid(command, "@UserId", userId);
+        await using var reader = await command.ExecuteReaderAsync(token);
+        var result = new List<MyTripSettlementResponse>();
+        while (await reader.ReadAsync(token)) result.Add(new(reader.GetGuid(reader.GetOrdinal("DebtorId")), reader.GetString(reader.GetOrdinal("DebtorName")), reader.GetGuid(reader.GetOrdinal("CreditorId")), reader.GetString(reader.GetOrdinal("CreditorName")), reader.GetString(reader.GetOrdinal("SettlementType")), reader.GetDecimal(reader.GetOrdinal("OriginalAmount")), reader.GetDecimal(reader.GetOrdinal("CompletedAmount")), reader.GetDecimal(reader.GetOrdinal("PendingAmount")), reader.GetDecimal(reader.GetOrdinal("RemainingAmount")), Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("ProgressPercent")))));
+        return result;
+    }
+    private static async Task<SettlementRequestIdentity?> FindSettlementRequestAsync(SqlConnection connection, SqlTransaction transaction, Guid settlementId, CancellationToken token)
+    {
+        await using var command = new SqlCommand("SELECT TripId, PaidByUserId, ReceivedByUserId, Amount, Status, CreatedBy FROM dbo.TripSettlements WITH (UPDLOCK, HOLDLOCK) WHERE SettlementId=@SettlementId", connection, transaction);
+        AddGuid(command, "@SettlementId", settlementId);
+        await using var reader = await command.ExecuteReaderAsync(token);
+        if (!await reader.ReadAsync(token)) return null;
+        return new SettlementRequestIdentity(reader.GetGuid(0), reader.GetGuid(1), reader.GetGuid(2), reader.GetDecimal(3), reader.GetString(4), reader.GetGuid(5));
+    }
+    private sealed record SettlementRequestIdentity(Guid TripId, Guid PaidByUserId, Guid ReceivedByUserId, decimal Amount, string Status, Guid CreatedBy);
     private static void AddGuid(SqlCommand command, string name, Guid value) => command.Parameters.Add(name, SqlDbType.UniqueIdentifier).Value = value;
     private static void AddDecimal(SqlCommand command, string name, decimal value) { var p = command.Parameters.Add(name, SqlDbType.Decimal); p.Precision = 19; p.Scale = 2; p.Value = value; }
     private static string? NullableString(SqlDataReader r, string name) { var i = r.GetOrdinal(name); return r.IsDBNull(i) ? null : r.GetString(i); }

@@ -3,7 +3,7 @@ using PaisaMatters.ServiceInterface;
 
 namespace PaisaMatters.Service;
 
-public sealed class ExpenseService(IExpenseDataService data, ITripService trips) : IExpenseService
+public sealed class ExpenseService(IExpenseDataService data, ITripService trips, IAuthService auth) : IExpenseService
 {
     public async Task<ExpenseSaveResult> SaveExpenseAsync(Guid tripId, Guid? expenseId, SaveTripExpenseRequest request, Guid userId, CancellationToken token)
     {
@@ -23,9 +23,49 @@ public sealed class ExpenseService(IExpenseDataService data, ITripService trips)
     public async Task<ExpenseDeleteResult> DeleteExpenseAsync(Guid tripId, Guid expenseId, Guid userId, CancellationToken token) { await ActiveMembers(tripId, userId, token); return await data.DeleteExpenseAsync(tripId, expenseId, token); }
     public async Task<IReadOnlyList<ExpenseBalanceResponse>> GetBalancesAsync(Guid tripId, Guid userId, CancellationToken token) { await ActiveMembers(tripId, userId, token); return await data.GetBalancesAsync(tripId, token); }
     public async Task<IReadOnlyList<SuggestedSettlementResponse>> GetSuggestionsAsync(Guid tripId, Guid userId, CancellationToken token) { await ActiveMembers(tripId, userId, token); return await data.GetSuggestionsAsync(tripId, token); }
-    public async Task<SettlementSaveResult> CreateSettlementAsync(Guid tripId, CreateTripSettlementRequest request, Guid userId, CancellationToken token) { var members = await ActiveMembers(tripId, userId, token); ValidatePair(request.PaidByUserId, request.ReceivedByUserId, request.Amount, request.Notes, members); if (request.PaidByUserId != userId) throw new UnauthorizedAccessException("Only the payer can record a repayment."); return await data.CreateSettlementAsync(tripId, request, userId, token); }
+    public async Task<SettlementSaveResult> CreateSettlementAsync(Guid tripId, CreateTripSettlementRequest request, Guid userId, CancellationToken token)
+    {
+        if (request.SettlementId is null || request.SettlementId == Guid.Empty)
+            throw new ArgumentException("A unique repayment request identifier is required.");
+        var members = await ActiveMembers(tripId, userId, token);
+        ValidatePair(request.PaidByUserId, request.ReceivedByUserId, request.Amount, request.Notes, members);
+        if (request.PaidByUserId != userId) throw new UnauthorizedAccessException("Only the payer can record a repayment.");
+
+        return await data.CreateSettlementAsync(tripId, request, userId, token);
+    }
     public async Task<SettlementSaveResult> UpdateSettlementAsync(Guid tripId, Guid settlementId, UpdateTripSettlementRequest request, Guid userId, CancellationToken token) { var members = await ActiveMembers(tripId, userId, token); ValidatePair(request.PaidByUserId, request.ReceivedByUserId, request.Amount, request.Notes, members); if (request.PaidByUserId != userId) throw new UnauthorizedAccessException("The authenticated payer must remain the payer when editing a repayment."); var history = await data.GetSettlementHistoryAsync(tripId, userId, "Pending", token); var existing = history.FirstOrDefault(x => x.SettlementId == settlementId); if (existing is null) throw new KeyNotFoundException(); if (existing.PaidByUserId != userId) throw new UnauthorizedAccessException(); return await data.UpdateSettlementAsync(tripId, settlementId, request, token); }
     public async Task<IReadOnlyList<MyTripSettlementResponse>> GetMySettlementsAsync(Guid tripId, Guid userId, CancellationToken token) { await ActiveMembers(tripId, userId, token); return await data.GetMySettlementsAsync(tripId, userId, token); }
+    public async Task<PaymentQrDetails> GetPaymentQrDetailsAsync(Guid tripId, Guid recipientId, Guid userId, CancellationToken token)
+    {
+        var members = await ActiveMembers(tripId, userId, token);
+        if (!members.Any(member => member.UserId == recipientId))
+            throw new KeyNotFoundException("This recipient is not an active member of the trip.");
+
+        var pair = (await data.GetMySettlementsAsync(tripId, userId, token))
+            .FirstOrDefault(item => item.DebtorId == userId && item.CreditorId == recipientId);
+        if (pair is null)
+            throw new KeyNotFoundException("No outstanding balance is due to this recipient.");
+        if (pair.RemainingAmount <= 0)
+            throw new ArgumentException("This balance is already settled. Refresh the settlement overview.");
+
+        var trip = await trips.GetByIdAsync(tripId, userId, token);
+        if (trip is null) throw new KeyNotFoundException("The trip could not be found or accessed.");
+        var recipient = await auth.GetPaymentRecipientProfileAsync(recipientId, token);
+        if (recipient is null) throw new KeyNotFoundException("Recipient details are unavailable.");
+
+        var upiId = recipient.UpiId?.Trim();
+        if (string.IsNullOrWhiteSpace(upiId) || !System.Text.RegularExpressions.Regex.IsMatch(upiId, "^[A-Za-z0-9._-]{2,}@[A-Za-z0-9.-]+$"))
+            upiId = null;
+
+        return new PaymentQrDetails(
+            recipientId,
+            recipient.FullName,
+            upiId,
+            pair.RemainingAmount,
+            pair.RemainingAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+            trip.CurrencyCode,
+            $"PaisaMatters {tripId.ToString("N")[..8]}");
+    }
     public async Task<IReadOnlyList<TripSettlementResponse>> GetSettlementHistoryAsync(Guid tripId, Guid userId, string? status, CancellationToken token) { await ActiveMembers(tripId, userId, token); if (status is not (null or "Pending" or "Completed" or "Cancelled")) throw new ArgumentException("Status must be Pending, Completed, or Cancelled."); return await data.GetSettlementHistoryAsync(tripId, userId, status, token); }
     public async Task<IReadOnlyList<TripSettlementResponse>> GetSettlementsAsync(Guid tripId, Guid userId, CancellationToken token) { await ActiveMembers(tripId, userId, token); return await data.GetSettlementsAsync(tripId, token); }
     public async Task<SettlementSaveResult> UpdateSettlementStatusAsync(Guid tripId, Guid settlementId, string status, Guid userId, CancellationToken token) { await ActiveMembers(tripId, userId, token); if (status is not ("Completed" or "Cancelled")) throw new ArgumentException("Settlement status must be Completed or Cancelled."); var history = await data.GetSettlementHistoryAsync(tripId, userId, "Pending", token); var existing = history.FirstOrDefault(x => x.SettlementId == settlementId); if (existing is null) throw new KeyNotFoundException(); if (status == "Completed" && existing.ReceivedByUserId != userId) throw new UnauthorizedAccessException("Only the recipient can confirm a repayment."); if (status == "Cancelled" && existing.PaidByUserId != userId && existing.ReceivedByUserId != userId) throw new UnauthorizedAccessException(); return await data.UpdateSettlementStatusAsync(tripId, settlementId, status, token); }

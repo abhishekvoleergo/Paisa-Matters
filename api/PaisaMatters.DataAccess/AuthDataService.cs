@@ -66,6 +66,17 @@ public sealed class AuthDataService(string connectionString) : IAuthDataService
         return new UserProfile(id, name, email, await GetRolesAsync(connection, id, token), upiId);
     }
 
+    public async Task<PaymentRecipientProfile?> GetPaymentRecipientProfileAsync(Guid id, CancellationToken token)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(token);
+        await using var command = new SqlCommand("SELECT FullName, UPIId FROM dbo.Users WHERE UserId=@id AND IsActive=1", connection);
+        command.Parameters.Add("@id", SqlDbType.UniqueIdentifier).Value = id;
+        await using var reader = await command.ExecuteReaderAsync(token);
+        if (!await reader.ReadAsync(token)) return null;
+        return new PaymentRecipientProfile(reader.GetString(0), reader.IsDBNull(1) ? null : reader.GetString(1));
+    }
+
     public async Task<UserProfile?> UpdateProfileAsync(Guid id, string fullName, string? upiId, CancellationToken token)
     {
         await using var connection = new SqlConnection(_connectionString);

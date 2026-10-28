@@ -17,6 +17,9 @@ public sealed class AuthService(IAuthDataService data) : IAuthService
     public Task<UserProfile?> GetProfileAsync(Guid id, CancellationToken token) =>
         data.GetProfileAsync(id, token);
 
+    public Task<PaymentRecipientProfile?> GetPaymentRecipientProfileAsync(Guid id, CancellationToken token) =>
+        data.GetPaymentRecipientProfileAsync(id, token);
+
     public Task<UserProfile?> UpdateProfileAsync(Guid id, string fullName, string? upiId, CancellationToken token) =>
         data.UpdateProfileAsync(id, fullName, upiId, token);
 

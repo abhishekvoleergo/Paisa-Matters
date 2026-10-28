@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiErrorMessage, apiStatus } from "@/lib/api/client";
 import { getCurrentUser } from "@/lib/api";
 import {
   expensesApi,
+  PaymentQrDetails,
   Settlement,
   SettlementDashboardItem,
 } from "@/lib/api/expenses";
@@ -56,8 +57,15 @@ export default function SettlementOverviewPage() {
   } | null>(null);
   const [formError, setFormError] = useState("");
 
-  // Payment Info Modal
-  const [paymentInfoReceiver, setPaymentInfoReceiver] = useState<string | null>(null);
+  // UPI payment details are fetched from the authorized API for the selected balance pair.
+  const [paymentInfo, setPaymentInfo] = useState<{
+    recipientId: string;
+    details: PaymentQrDetails | null;
+    loading: boolean;
+    error: string;
+  } | null>(null);
+  const paymentInfoRequest = useRef(0);
+  const settlementRequestIds = useRef(new Map<string, string>());
 
   const validTripId =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -140,6 +148,7 @@ export default function SettlementOverviewPage() {
 
   // Open Create Form (manual)
   function handleOpenCreate() {
+    settlementRequestIds.current.clear();
     setEditingSettlement(null);
     setPrefilledData({
       paidByUserId: userId,
@@ -152,6 +161,7 @@ export default function SettlementOverviewPage() {
 
   // Open Create Form pre-filled from You Pay card
   function handlePayCard(receiverId: string, remainingAmount: number) {
+    settlementRequestIds.current.clear();
     setEditingSettlement(null);
     setPrefilledData({
       paidByUserId: userId,
@@ -162,8 +172,34 @@ export default function SettlementOverviewPage() {
     setFormOpen(true);
   }
 
+  async function handleShowPaymentInfo(recipientId: string) {
+    const requestId = ++paymentInfoRequest.current;
+    setPaymentInfo({ recipientId, details: null, loading: true, error: "" });
+    try {
+      const details = await expensesApi.paymentQrDetails(tripId, recipientId);
+      if (requestId === paymentInfoRequest.current) {
+        setPaymentInfo({ recipientId, details, loading: false, error: "" });
+      }
+    } catch (cause) {
+      if (requestId === paymentInfoRequest.current) {
+        setPaymentInfo({
+          recipientId,
+          details: null,
+          loading: false,
+          error: apiErrorMessage(cause, "Recipient payment details could not be loaded."),
+        });
+      }
+    }
+  }
+
+  function closePaymentInfo() {
+    paymentInfoRequest.current += 1;
+    setPaymentInfo(null);
+  }
+
   // Open Edit Form
   function handleOpenEdit(settlement: Settlement) {
+    settlementRequestIds.current.clear();
     setEditingSettlement(settlement);
     setPrefilledData({
       settlementId: settlement.settlementId,
@@ -196,7 +232,17 @@ export default function SettlementOverviewPage() {
         );
         setNotice("Pending repayment updated successfully.");
       } else {
-        await expensesApi.createSettlement(tripId, { ...payload, amount: sanitizedAmount });
+        const requestSignature = `${payload.paidByUserId}:${payload.receivedByUserId}:${sanitizedAmount}`;
+        let settlementId = settlementRequestIds.current.get(requestSignature);
+        if (!settlementId) {
+          settlementId = crypto.randomUUID();
+          settlementRequestIds.current.set(requestSignature, settlementId);
+        }
+        await expensesApi.createSettlement(tripId, {
+          ...payload,
+          amount: sanitizedAmount,
+          settlementId,
+        });
         setNotice(
           "Repayment recorded as Pending. The recipient must confirm receipt once transfer is completed.",
         );
@@ -427,7 +473,7 @@ export default function SettlementOverviewPage() {
                   item={item}
                   currency={currency}
                   onPay={handlePayCard}
-                  onShowPaymentInfo={(name) => setPaymentInfoReceiver(name)}
+                  onShowPaymentInfo={(recipientId) => void handleShowPaymentInfo(recipientId)}
                 />
               ))}
             </ul>
@@ -597,36 +643,28 @@ export default function SettlementOverviewPage() {
       </div>
 
       {/* ── Form Modal (Create / Edit) ────────────────────────────── */}
-      <SettlementFormModal
-        isOpen={formOpen}
+      {formOpen && (
+        <SettlementFormModal
+          isOpen={formOpen}
         onClose={() => setFormOpen(false)}
-        onSubmit={handleFormSubmit}
-        activeMembers={activeMembers}
-        currentUserId={userId}
-        initialData={prefilledData}
-        currency={currency}
-        busy={busy}
-        serverError={formError}
-      />
+          onSubmit={handleFormSubmit}
+          activeMembers={activeMembers}
+          currentUserId={userId}
+          initialData={prefilledData}
+          currency={currency}
+          busy={busy}
+          serverError={formError}
+        />
+      )}
 
       {/* ── Payment Info Modal ────────────────────────────────────── */}
-      {paymentInfoReceiver && (
+      {paymentInfo && (
         <PaymentInfoModal
-          receiverName={paymentInfoReceiver}
-          onClose={() => setPaymentInfoReceiver(null)}
-          onProceedToRecord={() => {
-            const match = activeMembers.find(
-              (m) => m.fullName === paymentInfoReceiver,
-            );
-            handleOpenCreate();
-            if (match) {
-              setPrefilledData((prev) => ({
-                paidByUserId: userId,
-                receivedByUserId: match.userId,
-                amount: prev?.amount || 0,
-              }));
-            }
-          }}
+          details={paymentInfo.details}
+          loading={paymentInfo.loading}
+          error={paymentInfo.error}
+          onClose={closePaymentInfo}
+          onRetry={() => void handleShowPaymentInfo(paymentInfo.recipientId)}
         />
       )}
     </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { TripMember } from "@/lib/api/trips";
 
 type InitialFormData = {
@@ -48,26 +48,13 @@ export default function SettlementFormModal({
 }: SettlementFormModalProps) {
   const isEditing = Boolean(initialData?.settlementId);
 
-  const [payer, setPayer] = useState("");
-  const [receiver, setReceiver] = useState("");
-  const [amount, setAmount] = useState("");
-  const [notes, setNotes] = useState("");
+  const payer = initialData?.paidByUserId ?? currentUserId;
+  const [receiver, setReceiver] = useState(initialData?.receivedByUserId ?? "");
+  const [amount, setAmount] = useState(
+    initialData?.amount ? Math.round(initialData.amount).toString() : "",
+  );
+  const [notes, setNotes] = useState(initialData?.notes ?? "");
   const [clientError, setClientError] = useState("");
-
-  useEffect(() => {
-    if (initialData) {
-      setPayer(initialData.paidByUserId);
-      setReceiver(initialData.receivedByUserId);
-      setAmount(initialData.amount ? Math.round(initialData.amount).toString() : "");
-      setNotes(initialData.notes || "");
-    } else {
-      setPayer(currentUserId);
-      setReceiver("");
-      setAmount("");
-      setNotes("");
-    }
-    setClientError("");
-  }, [initialData, currentUserId, isOpen]);
 
   if (!isOpen) return null;
 

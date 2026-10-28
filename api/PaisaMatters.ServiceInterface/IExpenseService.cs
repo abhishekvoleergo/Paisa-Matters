@@ -29,6 +29,7 @@ public interface IExpenseService
     Task<SettlementSaveResult> CreateSettlementAsync(Guid tripId, CreateTripSettlementRequest request, Guid userId, CancellationToken token);
     Task<SettlementSaveResult> UpdateSettlementAsync(Guid tripId, Guid settlementId, UpdateTripSettlementRequest request, Guid userId, CancellationToken token);
     Task<IReadOnlyList<MyTripSettlementResponse>> GetMySettlementsAsync(Guid tripId, Guid userId, CancellationToken token);
+    Task<PaymentQrDetails> GetPaymentQrDetailsAsync(Guid tripId, Guid recipientId, Guid userId, CancellationToken token);
     Task<IReadOnlyList<TripSettlementResponse>> GetSettlementHistoryAsync(Guid tripId, Guid userId, string? status, CancellationToken token);
     Task<IReadOnlyList<TripSettlementResponse>> GetSettlementsAsync(Guid tripId, Guid userId, CancellationToken token);
     Task<SettlementSaveResult> UpdateSettlementStatusAsync(Guid tripId, Guid settlementId, string status, Guid userId, CancellationToken token);
