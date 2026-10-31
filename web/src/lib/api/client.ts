@@ -1,7 +1,17 @@
 import axios, { AxiosError } from "axios";
 
+const configuredApiUrl =
+  process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
+  process.env.NEXT_PUBLIC_API_URL?.trim();
+
+// In production, default to same-origin relative endpoint '/api' for Vercel rewrites proxying.
+// In local development, fallback to 'http://localhost:5000/api' if not explicitly configured.
+const apiBaseUrl =
+  configuredApiUrl ||
+  (process.env.NODE_ENV === "production" ? "/api" : "http://localhost:5000/api");
+
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api",
+  baseURL: apiBaseUrl,
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
