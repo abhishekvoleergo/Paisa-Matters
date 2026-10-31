@@ -57,6 +57,73 @@ public sealed class TripController(ITripService trips, ILogger<TripController> l
         catch (SqlException ex) { logger.LogError(ex, "Trip members could not be loaded for {TripId}", tripId); return Problem("Trip members are temporarily unavailable.", statusCode: 503); }
     }
 
+    [HttpGet("join-requests/mine")]
+    public async Task<IActionResult> MyJoinRequests()
+    {
+        if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+        try { return Ok(await trips.GetMyJoinRequestsAsync(userId, HttpContext.RequestAborted)); }
+        catch (SqlException ex) { logger.LogError(ex, "Join request status could not be loaded"); return Problem("Join request status is temporarily unavailable.", statusCode: 503); }
+    }
+
+    [HttpGet("join-requests/owner")]
+    public async Task<IActionResult> OwnerJoinRequests([FromQuery] bool includeCleared = false)
+    {
+        if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+        try { return Ok(await trips.GetOwnerJoinRequestsAsync(userId, includeCleared, HttpContext.RequestAborted)); }
+        catch (SqlException ex) { logger.LogError(ex, "Owner join request inbox could not be loaded"); return Problem("Join request notifications are temporarily unavailable.", statusCode: 503); }
+    }
+
+    [HttpPost("join-requests/{requestId:guid}/approve")]
+    public async Task<IActionResult> ApproveJoinRequest(Guid requestId)
+    {
+        if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+        try
+        {
+            var result = await trips.ApproveJoinRequestAsync(requestId, userId, HttpContext.RequestAborted);
+            return result.Status == "Expired" ? Conflict(result) : Ok(result);
+        }
+        catch (SqlException ex) when (ex.Number is 51100 or 51101) { return NotFound(); }
+        catch (SqlException ex) when (ex.Number == 51102) { return Conflict(new { message = "This request is no longer pending." }); }
+        catch (SqlException ex) { logger.LogError(ex, "Join request approval failed for {RequestId}", requestId); return Problem("The request could not be approved. Please try again.", statusCode: 503); }
+    }
+
+    [HttpPost("join-requests/{requestId:guid}/reject")]
+    public async Task<IActionResult> RejectJoinRequest(Guid requestId)
+    {
+        if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+        try { return Ok(await trips.RejectJoinRequestAsync(requestId, userId, HttpContext.RequestAborted)); }
+        catch (SqlException ex) when (ex.Number is 51100 or 51101) { return NotFound(); }
+        catch (SqlException ex) when (ex.Number == 51102) { return Conflict(new { message = "This request is no longer pending." }); }
+        catch (SqlException ex) { logger.LogError(ex, "Join request rejection failed for {RequestId}", requestId); return Problem("The request could not be rejected. Please try again.", statusCode: 503); }
+    }
+
+    [HttpPost("join-requests/{requestId:guid}/cancel")]
+    public async Task<IActionResult> CancelJoinRequest(Guid requestId)
+    {
+        if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+        try { return Ok(await trips.CancelJoinRequestAsync(requestId, userId, HttpContext.RequestAborted)); }
+        catch (SqlException ex) when (ex.Number is 51100 or 51101) { return NotFound(); }
+        catch (SqlException ex) when (ex.Number == 51102) { return Conflict(new { message = "Only a pending request can be cancelled." }); }
+        catch (SqlException ex) { logger.LogError(ex, "Join request cancellation failed for {RequestId}", requestId); return Problem("The request could not be cancelled. Please try again.", statusCode: 503); }
+    }
+
+    [HttpPost("join-requests/{requestId:guid}/clear")]
+    public async Task<IActionResult> ClearJoinRequest(Guid requestId)
+    {
+        if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+        try { return Ok(await trips.ClearJoinRequestAsync(requestId, userId, HttpContext.RequestAborted)); }
+        catch (SqlException ex) when (ex.Number is 51100 or 51101) { return NotFound(); }
+        catch (SqlException ex) { logger.LogError(ex, "Join request notification could not be cleared for {RequestId}", requestId); return Problem("The notification could not be cleared. Please try again.", statusCode: 503); }
+    }
+
+    [HttpPost("join-requests/clear-all")]
+    public async Task<IActionResult> ClearAllJoinRequests()
+    {
+        if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+        try { return Ok(new { clearedCount = await trips.ClearAllJoinRequestsAsync(userId, HttpContext.RequestAborted) }); }
+        catch (SqlException ex) { logger.LogError(ex, "Owner join request notifications could not be cleared"); return Problem("Notifications could not be cleared. Please try again.", statusCode: 503); }
+    }
+
     [HttpPost("{tripId:guid}/invites")]
     public async Task<IActionResult> CreateInvite(Guid tripId, CreateTripInviteRequest request)
     {

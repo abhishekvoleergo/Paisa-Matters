@@ -12,6 +12,13 @@ export const tripRoutes = {
 /** API paths are relative to the /api base URL configured in the Axios client. */
 export const tripApiRoutes = {
   collection: "/trips",
+  myJoinRequests: "/trips/join-requests/mine",
+  ownerJoinRequests: "/trips/join-requests/owner",
+  approveJoinRequest: (requestId: string) => "/trips/join-requests/" + encodeURIComponent(requestId) + "/approve",
+  rejectJoinRequest: (requestId: string) => "/trips/join-requests/" + encodeURIComponent(requestId) + "/reject",
+  cancelJoinRequest: (requestId: string) => "/trips/join-requests/" + encodeURIComponent(requestId) + "/cancel",
+  clearJoinRequest: (requestId: string) => "/trips/join-requests/" + encodeURIComponent(requestId) + "/clear",
+  clearAllJoinRequests: "/trips/join-requests/clear-all",
   byId: (tripId: string) => `/trips/${encodeURIComponent(tripId)}`,
   members: (tripId: string) => `/trips/${encodeURIComponent(tripId)}/members`,
   invites: (tripId: string) => `/trips/${encodeURIComponent(tripId)}/invites`,
@@ -64,7 +71,30 @@ export type InvitePreview = {
   maxUses: number | null;
   useCount: number | null;
 };
-export type JoinTripResult = { tripId: string; status: "Joined" | "AlreadyMember" | string };
+export type JoinTripResult = { requestId: string | null; tripId: string; status: "Pending" | "AlreadyMember" | string };
+export type TripJoinRequest = {
+  requestId: string;
+  tripId: string;
+  tripName: string;
+  destination: string;
+  status: "Pending" | "Approved" | "Rejected" | "Cancelled" | "Expired" | string;
+  requestedAt: string;
+  respondedAt: string | null;
+};
+export type OwnerJoinRequest = TripJoinRequest & {
+  applicantUserId: string;
+  applicantName: string;
+  applicantEmail: string;
+  clearedAt: string | null;
+};
+export type JoinRequestAction = {
+  requestId: string;
+  tripId: string;
+  status: string;
+  requestedAt: string;
+  respondedAt: string | null;
+  clearedAt: string | null;
+};
 
 export const tripsApi = {
   async create(request: CreateTripRequest): Promise<Trip> {
@@ -101,5 +131,33 @@ export const tripsApi = {
   async joinByInvite(token: string): Promise<JoinTripResult> {
     const response = await apiClient.post<JoinTripResult>(tripApiRoutes.joinByToken(token));
     return response.data;
+  },
+  async myJoinRequests(): Promise<TripJoinRequest[]> {
+    const response = await apiClient.get<TripJoinRequest[]>(tripApiRoutes.myJoinRequests);
+    return response.data;
+  },
+  async ownerJoinRequests(includeCleared = false): Promise<OwnerJoinRequest[]> {
+    const response = await apiClient.get<OwnerJoinRequest[]>(tripApiRoutes.ownerJoinRequests, { params: { includeCleared } });
+    return response.data;
+  },
+  async approveJoinRequest(requestId: string): Promise<JoinRequestAction> {
+    const response = await apiClient.post<JoinRequestAction>(tripApiRoutes.approveJoinRequest(requestId));
+    return response.data;
+  },
+  async rejectJoinRequest(requestId: string): Promise<JoinRequestAction> {
+    const response = await apiClient.post<JoinRequestAction>(tripApiRoutes.rejectJoinRequest(requestId));
+    return response.data;
+  },
+  async cancelJoinRequest(requestId: string): Promise<JoinRequestAction> {
+    const response = await apiClient.post<JoinRequestAction>(tripApiRoutes.cancelJoinRequest(requestId));
+    return response.data;
+  },
+  async clearJoinRequest(requestId: string): Promise<JoinRequestAction> {
+    const response = await apiClient.post<JoinRequestAction>(tripApiRoutes.clearJoinRequest(requestId));
+    return response.data;
+  },
+  async clearAllJoinRequests(): Promise<number> {
+    const response = await apiClient.post<{ clearedCount: number }>(tripApiRoutes.clearAllJoinRequests);
+    return response.data.clearedCount;
   },
 };

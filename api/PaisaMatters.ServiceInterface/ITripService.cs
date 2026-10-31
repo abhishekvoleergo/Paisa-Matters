@@ -13,6 +13,13 @@ public interface ITripDataService
     Task<IReadOnlyList<TripMemberResponse>> GetMembersAsync(Guid tripId, Guid userId, CancellationToken token);
     Task<InvitePreviewResponse> PreviewInviteAsync(byte[] tokenHash, CancellationToken token);
     Task<JoinTripResponse> JoinInviteAsync(byte[] tokenHash, Guid userId, CancellationToken token);
+    Task<IReadOnlyList<TripJoinRequestResponse>> GetMyJoinRequestsAsync(Guid userId, CancellationToken token);
+    Task<IReadOnlyList<OwnerJoinRequestResponse>> GetOwnerJoinRequestsAsync(Guid userId, bool includeCleared, CancellationToken token);
+    Task<JoinRequestActionResponse> ApproveJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token);
+    Task<JoinRequestActionResponse> RejectJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token);
+    Task<JoinRequestActionResponse> CancelJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token);
+    Task<JoinRequestActionResponse> ClearJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token);
+    Task<int> ClearAllJoinRequestsAsync(Guid userId, CancellationToken token);
 }
 
 public interface ITripService
@@ -26,4 +33,11 @@ public interface ITripService
     Task<IReadOnlyList<TripMemberResponse>> GetMembersAsync(Guid tripId, Guid userId, CancellationToken token);
     Task<InvitePreviewResponse> PreviewInviteAsync(string rawToken, CancellationToken token);
     Task<JoinTripResponse> JoinInviteAsync(string rawToken, Guid userId, CancellationToken token);
+    Task<IReadOnlyList<TripJoinRequestResponse>> GetMyJoinRequestsAsync(Guid userId, CancellationToken token);
+    Task<IReadOnlyList<OwnerJoinRequestResponse>> GetOwnerJoinRequestsAsync(Guid userId, bool includeCleared, CancellationToken token);
+    Task<JoinRequestActionResponse> ApproveJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token);
+    Task<JoinRequestActionResponse> RejectJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token);
+    Task<JoinRequestActionResponse> CancelJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token);
+    Task<JoinRequestActionResponse> ClearJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token);
+    Task<int> ClearAllJoinRequestsAsync(Guid userId, CancellationToken token);
 }

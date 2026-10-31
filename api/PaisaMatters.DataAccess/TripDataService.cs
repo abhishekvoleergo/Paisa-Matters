@@ -117,12 +117,68 @@ public sealed class TripDataService(string connectionString) : ITripDataService
     public async Task<JoinTripResponse> JoinInviteAsync(byte[] tokenHash, Guid userId, CancellationToken token)
     {
         await using var connection = new SqlConnection(_connectionString); await connection.OpenAsync(token);
-        await using var command = new SqlCommand(Procedures.JoinTripByInvite, connection) { CommandType = CommandType.StoredProcedure };
+        await using var command = new SqlCommand(Procedures.CreateTripJoinRequestByInvite, connection) { CommandType = CommandType.StoredProcedure };
         command.Parameters.Add("@TokenHash", SqlDbType.VarBinary, 32).Value = tokenHash;
         command.Parameters.Add("@UserId", SqlDbType.UniqueIdentifier).Value = userId;
         await using var reader = await command.ExecuteReaderAsync(token);
         if (!await reader.ReadAsync(token)) throw new InvalidOperationException("Join procedure did not return a result.");
-        return new JoinTripResponse(reader.GetGuid(reader.GetOrdinal("TripId")), reader.GetString(reader.GetOrdinal("Status")));
+        var requestOrdinal = reader.GetOrdinal("RequestId");
+        return new JoinTripResponse(reader.IsDBNull(requestOrdinal) ? null : reader.GetGuid(requestOrdinal), reader.GetGuid(reader.GetOrdinal("TripId")), reader.GetString(reader.GetOrdinal("Status")));
+    }
+
+    public async Task<IReadOnlyList<TripJoinRequestResponse>> GetMyJoinRequestsAsync(Guid userId, CancellationToken token)
+    {
+        await using var connection = new SqlConnection(_connectionString); await connection.OpenAsync(token);
+        await using var command = new SqlCommand(Procedures.GetMyTripJoinRequests, connection) { CommandType = CommandType.StoredProcedure };
+        command.Parameters.Add("@UserId", SqlDbType.UniqueIdentifier).Value = userId;
+        var requests = new List<TripJoinRequestResponse>(); await using var reader = await command.ExecuteReaderAsync(token);
+        while (await reader.ReadAsync(token))
+            requests.Add(new TripJoinRequestResponse(reader.GetGuid(reader.GetOrdinal("RequestId")), reader.GetGuid(reader.GetOrdinal("TripId")), reader.GetString(reader.GetOrdinal("TripName")), reader.GetString(reader.GetOrdinal("Destination")), reader.GetString(reader.GetOrdinal("Status")), reader.GetDateTime(reader.GetOrdinal("RequestedAt")), ReadNullableDateTime(reader, "RespondedAt")));
+        return requests;
+    }
+
+    public async Task<IReadOnlyList<OwnerJoinRequestResponse>> GetOwnerJoinRequestsAsync(Guid userId, bool includeCleared, CancellationToken token)
+    {
+        await using var connection = new SqlConnection(_connectionString); await connection.OpenAsync(token);
+        await using var command = new SqlCommand(Procedures.GetOwnerTripJoinRequests, connection) { CommandType = CommandType.StoredProcedure };
+        command.Parameters.Add("@UserId", SqlDbType.UniqueIdentifier).Value = userId;
+        command.Parameters.Add("@IncludeCleared", SqlDbType.Bit).Value = includeCleared;
+        var requests = new List<OwnerJoinRequestResponse>(); await using var reader = await command.ExecuteReaderAsync(token);
+        while (await reader.ReadAsync(token))
+            requests.Add(new OwnerJoinRequestResponse(reader.GetGuid(reader.GetOrdinal("RequestId")), reader.GetGuid(reader.GetOrdinal("TripId")), reader.GetString(reader.GetOrdinal("TripName")), reader.GetString(reader.GetOrdinal("Destination")), reader.GetGuid(reader.GetOrdinal("ApplicantUserId")), reader.GetString(reader.GetOrdinal("ApplicantName")), reader.GetString(reader.GetOrdinal("ApplicantEmail")), reader.GetString(reader.GetOrdinal("Status")), reader.GetDateTime(reader.GetOrdinal("RequestedAt")), ReadNullableDateTime(reader, "RespondedAt"), ReadNullableDateTime(reader, "ClearedAt")));
+        return requests;
+    }
+
+    public Task<JoinRequestActionResponse> ApproveJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token) =>
+        RunJoinRequestActionAsync(Procedures.ApproveTripJoinRequest, requestId, userId, token);
+
+    public Task<JoinRequestActionResponse> RejectJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token) =>
+        RunJoinRequestActionAsync(Procedures.RejectTripJoinRequest, requestId, userId, token);
+
+    public Task<JoinRequestActionResponse> CancelJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token) =>
+        RunJoinRequestActionAsync(Procedures.CancelTripJoinRequest, requestId, userId, token);
+
+    public Task<JoinRequestActionResponse> ClearJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token) =>
+        RunJoinRequestActionAsync(Procedures.ClearTripJoinRequest, requestId, userId, token);
+
+    public async Task<int> ClearAllJoinRequestsAsync(Guid userId, CancellationToken token)
+    {
+        await using var connection = new SqlConnection(_connectionString); await connection.OpenAsync(token);
+        await using var command = new SqlCommand(Procedures.ClearAllTripJoinRequests, connection) { CommandType = CommandType.StoredProcedure };
+        command.Parameters.Add("@UserId", SqlDbType.UniqueIdentifier).Value = userId;
+        var result = await command.ExecuteScalarAsync(token);
+        return Convert.ToInt32(result);
+    }
+
+    private async Task<JoinRequestActionResponse> RunJoinRequestActionAsync(string procedure, Guid requestId, Guid userId, CancellationToken token)
+    {
+        await using var connection = new SqlConnection(_connectionString); await connection.OpenAsync(token);
+        await using var command = new SqlCommand(procedure, connection) { CommandType = CommandType.StoredProcedure };
+        command.Parameters.Add("@RequestId", SqlDbType.UniqueIdentifier).Value = requestId;
+        command.Parameters.Add("@UserId", SqlDbType.UniqueIdentifier).Value = userId;
+        await using var reader = await command.ExecuteReaderAsync(token);
+        if (!await reader.ReadAsync(token)) throw new InvalidOperationException("Join request procedure did not return a result.");
+        return new JoinRequestActionResponse(reader.GetGuid(reader.GetOrdinal("RequestId")), reader.GetGuid(reader.GetOrdinal("TripId")), reader.GetString(reader.GetOrdinal("Status")), reader.GetDateTime(reader.GetOrdinal("RequestedAt")), ReadNullableDateTime(reader, "RespondedAt"), ReadNullableDateTime(reader, "ClearedAt"));
     }
 
     private static DateTime? ReadNullableDateTime(SqlDataReader reader, string name) { var i=reader.GetOrdinal(name); return reader.IsDBNull(i) ? null : reader.GetDateTime(i); }

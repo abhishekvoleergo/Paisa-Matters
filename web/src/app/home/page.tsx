@@ -8,6 +8,9 @@ import { apiRequest, getCurrentUser, UserProfile } from "@/lib/api";
 import { apiErrorMessage } from "@/lib/api/client";
 import { CreateTripRequest, Trip, tripsApi, tripRoutes } from "@/lib/api/trips";
 import ProfileModal from "@/app/components/profile/ProfileModal";
+import JoinTripDialog from "@/app/components/trips/JoinTripDialog";
+import OwnerApprovalBell from "@/app/components/trips/OwnerApprovalBell";
+import { TripJoinRequest } from "@/lib/api/trips";
 
 function DashboardTripCard({ trip, onDelete, deletePending }: { trip: Trip; onDelete: (trip: Trip) => void; deletePending: boolean }) {
   const ownerCanEdit = trip.memberRole?.toLowerCase() === "owner";
@@ -63,13 +66,25 @@ export default function DashboardPage() {
   const [tripToDelete, setTripToDelete] = useState<Trip | null>(null);
   const [deletingTrip, setDeletingTrip] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [joinRequests, setJoinRequests] = useState<TripJoinRequest[]>([]);
+  const [joinRequestsLoading, setJoinRequestsLoading] = useState(true);
+  const [joinRequestsError, setJoinRequestsError] = useState("");
+  const [cancellingJoinRequestId, setCancellingJoinRequestId] = useState("");
 
   useEffect(() => {
     let active = true;
     const deletedTrip = new URLSearchParams(window.location.search).get("deleted");
     if (deletedTrip) queueMicrotask(() => { if (active) setSuccessMessage(`${deletedTrip} was marked inactive and removed from your trip list.`); });
     getCurrentUser()
-      .then((profile) => { if (active) setUser(profile); })
+      .then((profile) => {
+        if (!active) return;
+        setUser(profile);
+        tripsApi.myJoinRequests()
+          .then((requests) => { if (active) setJoinRequests(requests); })
+          .catch((error: unknown) => { if (active) setJoinRequestsError(apiErrorMessage(error, "Your join request status could not be loaded.")); })
+          .finally(() => { if (active) setJoinRequestsLoading(false); });
+      })
       .catch(() => router.replace("/auth?mode=login"))
       .finally(() => { if (active) setLoading(false); });
     tripsApi.list()
@@ -78,6 +93,31 @@ export default function DashboardPage() {
       .finally(() => { if (active) setTripsLoading(false); });
     return () => { active = false; };
   }, [router]);
+
+  async function refreshJoinRequests() {
+    setJoinRequestsError("");
+    try {
+      setJoinRequests(await tripsApi.myJoinRequests());
+    } catch (error) {
+      setJoinRequestsError(apiErrorMessage(error, "Your join request status could not be loaded."));
+    } finally {
+      setJoinRequestsLoading(false);
+    }
+  }
+
+  async function cancelJoinRequest(requestId: string) {
+    if (cancellingJoinRequestId) return;
+    setCancellingJoinRequestId(requestId);
+    setJoinRequestsError("");
+    try {
+      await tripsApi.cancelJoinRequest(requestId);
+      await refreshJoinRequests();
+    } catch (error) {
+      setJoinRequestsError(apiErrorMessage(error, "Your request could not be cancelled."));
+    } finally {
+      setCancellingJoinRequestId("");
+    }
+  }
 
   async function logout() {
     setLoggingOut(true);
@@ -152,7 +192,9 @@ export default function DashboardPage() {
             <a href="#balances" className="hover:text-white">Balances</a>
             {isAdmin && <a href="/api/admin/verify-access" className="text-[#91cbb7]">Admin access</a>}
           </nav>
-          <div className="relative">
+          <div className="flex items-center gap-2">
+            <OwnerApprovalBell visible={!tripsLoading && trips.some((trip) => trip.memberRole?.toLowerCase() === "owner")} />
+            <div className="relative">
             <button
               type="button"
               onClick={() => setMenuOpen(!menuOpen)}
@@ -217,6 +259,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </div>
       </header>
@@ -231,6 +274,9 @@ export default function DashboardPage() {
             <div className="mt-7 flex flex-wrap gap-3">
               <button type="button" onClick={() => { setCreateOpen(true); setCreateError(""); setFieldErrors({}); }} className="rounded-full bg-[#91cbb7] px-5 py-3 text-xs font-semibold text-black transition hover:bg-[#b8dfd0]">
                 Create a Trip
+              </button>
+              <button type="button" onClick={() => setJoinOpen(true)} className="rounded-full border border-white/15 px-5 py-3 text-xs font-medium text-white/80 transition hover:border-[#91cbb7]/45 hover:text-white">
+                Join a Trip
               </button>
               {/* <button type="button" onClick={() => setProfileOpen(true)} className="rounded-full border border-white/15 px-5 py-3 text-xs text-white/75 transition hover:border-[#91cbb7]/40 hover:text-white">
                 Manage Profile &amp; UPI
@@ -290,6 +336,49 @@ export default function DashboardPage() {
             </div>
           </section>
         </div>
+
+        {(joinRequestsLoading || joinRequestsError || joinRequests.length > 0) && (
+          <section className="mt-6 rounded-[22px] border border-white/[0.08] bg-[#121d1b] p-6 sm:p-8">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="font-mono text-[9px] tracking-[0.2em] text-[#91cbb7]">TRIP ACCESS</p>
+                <h2 className="mt-1 font-serif text-xl">Join requests</h2>
+              </div>
+              <span className="text-[10px] text-white/35">Your requests</span>
+            </div>
+            {joinRequestsLoading ? (
+              <p role="status" className="mt-5 text-xs text-white/40">Loading request status…</p>
+            ) : joinRequestsError ? (
+              <div className="mt-5">
+                <p role="alert" className="text-xs text-[#f0b4a3]">{joinRequestsError}</p>
+                <button type="button" onClick={() => void refreshJoinRequests()} className="mt-3 text-xs text-[#b8dfd0] underline">Try again</button>
+              </div>
+            ) : (
+              <ul className="mt-5 divide-y divide-white/[0.07]">
+                {joinRequests.map((request) => {
+                  const pending = request.status === "Pending";
+                  const approved = request.status === "Approved";
+                  return (
+                    <li key={request.requestId} className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="truncate font-serif text-base">{request.tripName}</p>
+                        <p className="mt-1 truncate text-[11px] text-white/40">{request.destination} · Requested {new Date(request.requestedAt).toLocaleString()}</p>
+                        <p className={"mt-2 text-[10px] font-medium " + (pending ? "text-amber-100/75" : approved ? "text-[#b8dfd0]" : "text-white/45")}>
+                          {pending ? "Pending owner approval" : approved ? "Approved" : request.status}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {approved && <Link href={tripRoutes.details(request.tripId)} className="rounded-full border border-[#91cbb7]/30 px-4 py-2 text-[10px] text-[#b8dfd0] hover:bg-[#91cbb7]/10">Open trip</Link>}
+                        {pending && <button type="button" onClick={() => void cancelJoinRequest(request.requestId)} disabled={Boolean(cancellingJoinRequestId)} className="rounded-full border border-white/15 px-4 py-2 text-[10px] text-white/65 hover:text-white disabled:opacity-40">{cancellingJoinRequestId === request.requestId ? "Cancelling…" : "Cancel request"}</button>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        )}
+
         <footer className="mt-12 border-t border-white/[0.07] pt-5 text-[10px] text-white/30">A clearer way to travel together.</footer>
       </div>
 
@@ -303,6 +392,13 @@ export default function DashboardPage() {
           setSuccessMessage("Your profile information has been updated.");
         }}
       />
+
+      {joinOpen && (
+        <JoinTripDialog
+          onClose={() => setJoinOpen(false)}
+          onRequestSubmitted={() => { void refreshJoinRequests(); }}
+        />
+      )}
 
       {/* ── Create Trip Modal ─────────────────────────────────────── */}
       {createOpen && (

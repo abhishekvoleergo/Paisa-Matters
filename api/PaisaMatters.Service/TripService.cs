@@ -56,6 +56,27 @@ public sealed class TripService(ITripDataService data, IAuthService auth, string
         return await data.JoinInviteAsync(SHA256.HashData(bytes), userId, token);
     }
 
+    public Task<IReadOnlyList<TripJoinRequestResponse>> GetMyJoinRequestsAsync(Guid userId, CancellationToken token) =>
+        data.GetMyJoinRequestsAsync(userId, token);
+
+    public Task<IReadOnlyList<OwnerJoinRequestResponse>> GetOwnerJoinRequestsAsync(Guid userId, bool includeCleared, CancellationToken token) =>
+        data.GetOwnerJoinRequestsAsync(userId, includeCleared, token);
+
+    public Task<JoinRequestActionResponse> ApproveJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token) =>
+        data.ApproveJoinRequestAsync(requestId, userId, token);
+
+    public Task<JoinRequestActionResponse> RejectJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token) =>
+        data.RejectJoinRequestAsync(requestId, userId, token);
+
+    public Task<JoinRequestActionResponse> CancelJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token) =>
+        data.CancelJoinRequestAsync(requestId, userId, token);
+
+    public Task<JoinRequestActionResponse> ClearJoinRequestAsync(Guid requestId, Guid userId, CancellationToken token) =>
+        data.ClearJoinRequestAsync(requestId, userId, token);
+
+    public Task<int> ClearAllJoinRequestsAsync(Guid userId, CancellationToken token) =>
+        data.ClearAllJoinRequestsAsync(userId, token);
+
     private static bool TryDecodeToken(string token, out byte[] bytes)
     {
         bytes = [];
